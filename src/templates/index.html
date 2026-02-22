@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>HIL Simulator Dashboard</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --accent: #58a6ff;
+            --success: #2ea043;
+            --danger: #f85149;
+        }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 {
+            padding: 20px;
+            margin: 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid var(--border);
+            color: #fff;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text);
+            padding: 15px 20px;
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover,
+        .nav-btn.active {
+            background: var(--border);
+            color: #fff;
+            border-left: 4px solid var(--accent);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .view {
+            display: none;
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .view.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            color: #fff;
+        }
+
+        .status-on {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .status-off {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        select,
+        button {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        button {
+            background: var(--border);
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .log-container {
+            background: #000;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow-y: auto;
+            height: 300px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .archive-list button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 5px;
+            border-left: 3px solid transparent;
+        }
+
+        .archive-list button:hover {
+            border-left-color: var(--accent);
+        }
+
+        /* ANSI Base CSS */
+        .ansi2html-content {
+            color: #aaaaaa;
+        }
+
+        .ansi31 {
+            color: #aa0000;
+        }
+
+        .ansi32 {
+            color: #00aa00;
+        }
+
+        .ansi33 {
+            color: #aa5500;
+        }
+
+        .ansi34 {
+            color: #0000aa;
+        }
+
+        .ansi35 {
+            color: #E850A8;
+        }
+
+        .ansi36 {
+            color: #00aaaa;
+        }
+
+        .ansi90 {
+            color: #555555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <h2>HIL Simulator</h2>
+        <button class="nav-btn active" onclick="switchView('config', this)">System Config</button>
+        <button class="nav-btn" onclick="switchView('console', this)">Live Interactive Console</button>
+        <button class="nav-btn" onclick="switchView('archives', this)">Log Archives</button>
+    </div>
+
+    <div class="content">
+        <div id="view-config" class="view active">
+            <div class="grid">
+                <div class="card">
+                    <h3>Hardware Interface</h3>
+                    <select id="portSelect"></select>
+                    <button onclick="applyConfig()">Apply & Restart</button>
+                    <p id="actionMsg" style="margin-top:10px;"></p>
+                </div>
+                <div class="card">
+                    <h3>Services</h3>
+                    <p>Port: <span id="currentPort"></span></p>
+                    <p>TCP Mux (ser2net): <span id="ser2netStatus"></span></p>
+                    <p>Web SPA (ttyd): <span id="ttydStatus"></span></p>
+                </div>
+            </div>
+            <div class="card" style="flex:1; display:flex; flex-direction:column;">
+                <h3>Live Log Preview (Last 50 lines)</h3>
+                <div id="liveLogView" class="log-container ansi2html-content"></div>
+            </div>
+        </div>
+
+        <div id="view-console" class="view" style="padding:0;">
+            <iframe id="ttyFrame" src=""></iframe>
+        </div>
+
+        <div id="view-archives" class="view">
+            <div class="grid" style="grid-template-columns: 250px 1fr; height: 100%;">
+                <div class="card" style="overflow-y: auto;">
+                    <h3>Historical Files</h3>
+                    <div id="archiveList" class="archive-list"></div>
+                </div>
+                <div class="card" style="display:flex; flex-direction:column;">
+                    <h3>Viewer</h3>
+                    <div id="archiveLogView" class="log-container ansi2html-content" style="height: auto; flex:1;">
+                        Select a file to load.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchView(viewName, btn) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            btn.classList.add('active');
+
+            if (viewName === 'console') {
+                const frame = document.getElementById('ttyFrame');
+                if (!frame.src) frame.src = `http://${window.location.hostname}:8080`;
+            }
+            if (viewName === 'archives') loadArchivesList();
+        }
+
+        async function fetchStatus() {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            document.getElementById('currentPort').innerText = data.current_port;
+            document.getElementById('ser2netStatus').innerText = data.ser2net_active ? 'RUNNING' : 'FAILED';
+            document.getElementById('ser2netStatus').className = data.ser2net_active ? 'status-on' : 'status-off';
+            document.getElementById('ttydStatus').innerText = data.ttyd_active ? 'RUNNING' : 'FAILED';
+            document.getElementById('ttydStatus').className = data.ttyd_active ? 'status-on' : 'status-off';
+
+            const select = document.getElementById('portSelect');
+            select.innerHTML = '';
+            data.available_ports.forEach(port => {
+                const opt = new Option(port, port);
+                if (port === data.current_port) opt.selected = true;
+                select.add(opt);
+            });
+        }
+
+        async function applyConfig() {
+            const msg = document.getElementById('actionMsg');
+            msg.innerText = "Applying...";
+            const res = await fetch('/api/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ port: document.getElementById('portSelect').value }) });
+            msg.innerText = res.ok ? "Configuration Applied." : "Error.";
+            if (res.ok) setTimeout(fetchStatus, 1000);
+        }
+
+        async function fetchLiveLogs() {
+            if (!document.getElementById('view-config').classList.contains('active')) return;
+            const res = await fetch('/api/logs/live');
+            const data = await res.json();
+            document.getElementById('liveLogView').innerHTML = data.html;
+        }
+
+        async function loadArchivesList() {
+            const res = await fetch('/api/logs/archives');
+            const data = await res.json();
+            const list = document.getElementById('archiveList');
+            list.innerHTML = '';
+            data.archives.forEach(f => {
+                const btn = document.createElement('button');
+                btn.innerText = f.replace('esp32_serial.log_', '');
+                btn.onclick = () => readArchive(f);
+                list.appendChild(btn);
+            });
+        }
+
+        async function readArchive(filename) {
+            document.getElementById('archiveLogView').innerHTML = "Loading...";
+            const res = await fetch('/api/logs/read/' + filename);
+            const data = await res.json();
+            document.getElementById('archiveLogView').innerHTML = data.html;
+        }
+
+        fetchStatus();
+        setInterval(fetchLiveLogs, 3000);
+    </script>
+</body>
+
+</html>
