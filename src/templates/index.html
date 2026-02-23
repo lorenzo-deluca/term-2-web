@@ -3,20 +3,32 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>HIL Simulator Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ser2Web — Serial to Web Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0d1117;
-            --panel: #161b22;
-            --border: #30363d;
-            --text: #c9d1d9;
-            --accent: #58a6ff;
-            --success: #2ea043;
-            --danger: #f85149;
+            --bg: #0a0e17;
+            --panel: #111827;
+            --panel-hover: #1a2332;
+            --border: #1e293b;
+            --text: #94a3b8;
+            --text-bright: #e2e8f0;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --accent-gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            --success: #22c55e;
+            --danger: #ef4444;
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: -apple-system, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
             color: var(--text);
             margin: 0;
@@ -25,54 +37,124 @@
             overflow: hidden;
         }
 
+        /* Sidebar */
         .sidebar {
-            width: 250px;
+            width: 260px;
             background: var(--panel);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
         }
 
-        .sidebar h2 {
-            padding: 20px;
-            margin: 0;
-            font-size: 1.2rem;
+        .sidebar-header {
+            padding: 24px 20px;
             border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%);
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-gradient);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
             color: #fff;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .logo-text h2 {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-text span {
+            font-size: 0.7rem;
+            color: var(--text);
+            font-weight: 400;
+            letter-spacing: 0.02em;
         }
 
         .nav-btn {
             background: none;
             border: none;
             color: var(--text);
-            padding: 15px 20px;
+            padding: 14px 20px;
             text-align: left;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            font-weight: 500;
             cursor: pointer;
             border-bottom: 1px solid var(--border);
-            transition: 0.2s;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .nav-btn:hover,
+        .nav-btn:hover {
+            background: var(--panel-hover);
+            color: var(--text-bright);
+        }
+
         .nav-btn.active {
-            background: var(--border);
+            background: var(--accent-glow);
             color: #fff;
-            border-left: 4px solid var(--accent);
+            border-left-color: var(--accent);
         }
 
+        .nav-icon {
+            font-size: 1.1rem;
+            width: 22px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.72rem;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        .sidebar-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .sidebar-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Content Area */
         .content {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            background: var(--bg);
         }
 
         .view {
             display: none;
-            padding: 20px;
+            padding: 24px;
             flex: 1;
             overflow-y: auto;
-            box-sizing: border-box;
         }
 
         .view.active {
@@ -80,85 +162,177 @@
             flex-direction: column;
         }
 
+        /* Cards */
         .card {
             background: var(--panel);
             border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 20px;
+            border-radius: var(--radius);
+            padding: 22px;
             margin-bottom: 20px;
+            transition: border-color 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: #2d3a4f;
         }
 
         h3 {
-            margin-top: 0;
+            margin: 0 0 16px 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text);
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 10px;
-            color: #fff;
         }
 
         .status-on {
             color: var(--success);
-            font-weight: bold;
+            font-weight: 600;
         }
 
         .status-off {
             color: var(--danger);
-            font-weight: bold;
+            font-weight: 600;
         }
 
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        .status-dot.on {
+            background: var(--success);
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+        }
+
+        .status-dot.off {
+            background: var(--danger);
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Form Elements */
         select,
         button {
+            font-family: inherit;
             background: var(--bg);
-            color: var(--text);
+            color: var(--text-bright);
             border: 1px solid var(--border);
-            padding: 8px;
-            border-radius: 4px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
         }
 
         button {
-            background: var(--border);
             cursor: pointer;
+            font-weight: 500;
         }
 
         button:hover {
-            background: var(--accent);
+            border-color: var(--accent);
             color: #fff;
         }
 
+        .btn-primary {
+            background: var(--accent-gradient);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 10px 20px;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Log Container */
         .log-container {
             background: #000;
-            padding: 15px;
+            padding: 16px;
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius);
             overflow-y: auto;
             height: 300px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            margin-top: 10px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            margin-top: 12px;
         }
 
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: #000;
-        }
-
+        /* Grid */
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
 
+        /* Service Row */
+        .service-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .service-row+.service-row {
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+            margin-top: 2px;
+        }
+
+        .service-label {
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        /* Config area */
+        .config-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .config-row select {
+            flex: 1;
+        }
+
+        /* iframe */
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+            border-radius: var(--radius);
+        }
+
+        /* Archives */
         .archive-list button {
             display: block;
             width: 100%;
             text-align: left;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             border-left: 3px solid transparent;
+            font-size: 0.82rem;
+            padding: 8px 12px;
         }
 
         .archive-list button:hover {
             border-left-color: var(--accent);
+            background: var(--accent-glow);
         }
 
         /* ANSI Base CSS */
@@ -193,35 +367,78 @@
         .ansi90 {
             color: #555555;
         }
+
+        /* Action message */
+        #actionMsg {
+            font-size: 0.82rem;
+            color: var(--accent);
+            min-height: 20px;
+        }
+
+        p {
+            margin: 6px 0;
+            font-size: 0.88rem;
+        }
     </style>
 </head>
 
 <body>
     <div class="sidebar">
-        <h2>HIL Simulator</h2>
-        <button class="nav-btn active" onclick="switchView('config', this)">System Config</button>
-        <button class="nav-btn" onclick="switchView('console', this)">Live Interactive Console</button>
-        <button class="nav-btn" onclick="switchView('archives', this)">Log Archives</button>
+        <div class="sidebar-header">
+            <div class="logo-row">
+                <div class="logo-icon">⚡</div>
+                <div class="logo-text">
+                    <h2>Ser2Web</h2>
+                    <span>Serial-to-Web Bridge</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="nav-btn active" onclick="switchView('config', this)">
+            <span class="nav-icon">⚙️</span> System Config
+        </button>
+        <button class="nav-btn" onclick="switchView('console', this)">
+            <span class="nav-icon">🖥️</span> Live Console
+        </button>
+        <button class="nav-btn" onclick="switchView('archives', this)">
+            <span class="nav-icon">📁</span> Log Archives
+        </button>
+
+        <div class="sidebar-footer">
+            Open Source Project by<br>
+            <a href="https://github.com/lorenzo-deluca" target="_blank">Lorenzo De Luca</a>
+        </div>
     </div>
 
     <div class="content">
         <div id="view-config" class="view active">
             <div class="grid">
                 <div class="card">
-                    <h3>Hardware Interface</h3>
-                    <select id="portSelect"></select>
-                    <button onclick="applyConfig()">Apply & Restart</button>
-                    <p id="actionMsg" style="margin-top:10px;"></p>
+                    <h3>Serial Port</h3>
+                    <div class="config-row">
+                        <select id="portSelect"></select>
+                        <button class="btn-primary" onclick="applyConfig()">Apply & Restart</button>
+                    </div>
+                    <p id="actionMsg"></p>
                 </div>
                 <div class="card">
                     <h3>Services</h3>
-                    <p>Port: <span id="currentPort"></span></p>
-                    <p>TCP Mux (ser2net): <span id="ser2netStatus"></span></p>
-                    <p>Web SPA (ttyd): <span id="ttydStatus"></span></p>
+                    <div class="service-row">
+                        <span class="service-label">Active Port</span>
+                        <span id="currentPort" style="color: var(--text-bright); font-weight: 500;"></span>
+                    </div>
+                    <div class="service-row">
+                        <span class="service-label">TCP Mux (ser2net)</span>
+                        <span id="ser2netStatus"></span>
+                    </div>
+                    <div class="service-row">
+                        <span class="service-label">Web Terminal (ttyd)</span>
+                        <span id="ttydStatus"></span>
+                    </div>
                 </div>
             </div>
             <div class="card" style="flex:1; display:flex; flex-direction:column;">
-                <h3>Live Log Preview (Last 50 lines)</h3>
+                <h3>Live Log Preview — Last 50 Lines</h3>
                 <div id="liveLogView" class="log-container ansi2html-content"></div>
             </div>
         </div>
@@ -231,13 +448,13 @@
         </div>
 
         <div id="view-archives" class="view">
-            <div class="grid" style="grid-template-columns: 250px 1fr; height: 100%;">
+            <div class="grid" style="grid-template-columns: 260px 1fr; height: 100%;">
                 <div class="card" style="overflow-y: auto;">
-                    <h3>Historical Files</h3>
+                    <h3>Log Files</h3>
                     <div id="archiveList" class="archive-list"></div>
                 </div>
                 <div class="card" style="display:flex; flex-direction:column;">
-                    <h3>Viewer</h3>
+                    <h3>Log Viewer</h3>
                     <div id="archiveLogView" class="log-container ansi2html-content" style="height: auto; flex:1;">
                         Select a file to load.</div>
                 </div>
@@ -259,14 +476,19 @@
             if (viewName === 'archives') loadArchivesList();
         }
 
+        function formatStatus(isActive) {
+            const dot = `<span class="status-dot ${isActive ? 'on' : 'off'}"></span>`;
+            const label = isActive ? 'Running' : 'Stopped';
+            const cls = isActive ? 'status-on' : 'status-off';
+            return `${dot}<span class="${cls}">${label}</span>`;
+        }
+
         async function fetchStatus() {
             const res = await fetch('/api/status');
             const data = await res.json();
             document.getElementById('currentPort').innerText = data.current_port;
-            document.getElementById('ser2netStatus').innerText = data.ser2net_active ? 'RUNNING' : 'FAILED';
-            document.getElementById('ser2netStatus').className = data.ser2net_active ? 'status-on' : 'status-off';
-            document.getElementById('ttydStatus').innerText = data.ttyd_active ? 'RUNNING' : 'FAILED';
-            document.getElementById('ttydStatus').className = data.ttyd_active ? 'status-on' : 'status-off';
+            document.getElementById('ser2netStatus').innerHTML = formatStatus(data.ser2net_active);
+            document.getElementById('ttydStatus').innerHTML = formatStatus(data.ttyd_active);
 
             const select = document.getElementById('portSelect');
             select.innerHTML = '';
@@ -279,9 +501,13 @@
 
         async function applyConfig() {
             const msg = document.getElementById('actionMsg');
-            msg.innerText = "Applying...";
-            const res = await fetch('/api/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ port: document.getElementById('portSelect').value }) });
-            msg.innerText = res.ok ? "Configuration Applied." : "Error.";
+            msg.innerText = "Applying configuration...";
+            const res = await fetch('/api/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ port: document.getElementById('portSelect').value })
+            });
+            msg.innerText = res.ok ? "✓ Configuration applied successfully." : "✗ Error applying configuration.";
             if (res.ok) setTimeout(fetchStatus, 1000);
         }
 
