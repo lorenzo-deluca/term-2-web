@@ -20,7 +20,11 @@ def get_current_port():
     if not os.path.exists(CONFIG_FILE): return "No configuration"
     with open(CONFIG_FILE, 'r') as f:
         for line in f:
-            if 'device:' in line: return line.split('device:')[1].strip().strip(',')
+            if 'serialdev,' in line: 
+                # Assumes format "  connector: serialdev,/dev/ttyUSB0,115200n81,local"
+                return line.split('serialdev,')[1].split(',')[0].strip()
+            elif 'device:' in line: 
+                return line.split('device:')[1].strip().strip(',')
     return "Not detected"
 
 def get_service_status(container_name):
@@ -44,7 +48,7 @@ def status():
 @app.route('/api/apply', methods=['POST'])
 def apply():
     new_port = request.json.get('port')
-    yaml_content = f"connection: &con1\n  accepter: tcp,6666\n  enable: on\n  options:\n    kickolduser: true\n    trace-read: {LOG_FILE}\n    trace-write: {LOG_FILE}\n  connector: serialdev,\n    device: {new_port},\n    115200N81,local\n"
+    yaml_content = f"connection: &con1\n  accepter: tcp,6666\n  enable: on\n  options:\n    kickolduser: true\n    trace-read: {LOG_FILE}\n    trace-write: {LOG_FILE}\n  connector: serialdev,{new_port},115200n81,local\n"
     with open(CONFIG_FILE, 'w') as f: f.write(yaml_content)
     
     subprocess.run(['docker', 'restart', 'ser2web_ser2net'], check=True)
