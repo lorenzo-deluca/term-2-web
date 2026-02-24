@@ -37,7 +37,7 @@ graph LR
     subgraph "Ser2Web Container"
         direction TB
 
-        SER2NET["ser2net<br><i>Serial → TCP</i><br>Port 3333"]
+        SER2NET["ser2net<br><i>Serial → TCP</i><br>Port 6666"]
         TTYD["ttyd<br><i>TCP → WebSocket</i><br>Port 8080"]
         FLASK["Flask Dashboard<br><i>Config & Logs</i><br>Port 5000"]
         SUPERVISOR["supervisord<br><i>Process Manager</i>"]
@@ -60,8 +60,8 @@ graph LR
     end
 
     DEV -->|"/dev/ttyUSBx"| SER2NET
-    SER2NET -->|"TCP:3333"| TTYD
-    SER2NET -->|"TCP:3333"| TCP_CLIENT
+    SER2NET -->|"TCP:6666"| TTYD
+    SER2NET -->|"TCP:6666"| TCP_CLIENT
     TTYD -->|"WebSocket"| BROWSER
     FLASK -->|"HTTP:5000"| BROWSER
 ```
@@ -72,7 +72,7 @@ Ser2Web orchestrates four services via **supervisord**:
 
 | Service | Role | Port |
 |---|---|---|
-| **ser2net** | Bridges the physical serial port to a TCP socket. All serial I/O is logged to disk. | `3333` |
+| **ser2net** | Bridges the physical serial port to a TCP socket. All serial I/O is logged to disk. | `6666` |
 | **ttyd** | Connects to the ser2net TCP socket and exposes it as a web terminal via WebSocket. | `8080` |
 | **Flask app** | Web dashboard to select the serial port, apply configuration, monitor service status, and view logs. | `5000` |
 | **cron + logrotate** | Automatically rotates log files daily, keeping the last 30 days of history. | — |
@@ -80,8 +80,8 @@ Ser2Web orchestrates four services via **supervisord**:
 ### Data Flow
 
 1. The **serial device** (e.g. an ESP32 on `/dev/ttyUSB0`) sends data through the USB/UART interface
-2. **ser2net** reads the serial port and exposes it as a TCP socket on port `3333`, while also writing all traffic to log files
-3. **ttyd** connects to `localhost:3333` and streams the data to the browser as an interactive web terminal on port `8080`
+2. **ser2net** reads the serial port and exposes it as a TCP socket on port `6666`, while also writing all traffic to log files
+3. **ttyd** connects to `localhost:6666` and streams the data to the browser as an interactive web terminal on port `8080`
 4. The **Flask dashboard** on port `5000` provides a UI to change the serial port, restart services, and browse live/archived logs
 
 ## 🚀 Installation
@@ -107,7 +107,7 @@ The container runs in **privileged mode** to access the host's serial devices un
 |---|---|
 | `http://localhost:5001` | Dashboard |
 | `http://localhost:8080` | Web Terminal |
-| `localhost:3333` | Raw TCP serial socket |
+| `localhost:6666` | Raw TCP serial socket |
 
 To stop:
 
@@ -243,7 +243,7 @@ The generated `ser2net.yaml` configuration uses the following defaults:
 | Data bits | `8` |
 | Parity | `None` |
 | Stop bits | `1` |
-| TCP port | `3333` |
+| TCP port | `6666` |
 | Kick old user | `true` |
 
 ### Exposed Ports
@@ -252,7 +252,7 @@ The generated `ser2net.yaml` configuration uses the following defaults:
 |---|---|---|
 | `5001` | HTTP | Flask Dashboard |
 | `8080` | HTTP/WS | ttyd Web Terminal |
-| `3333` | TCP | ser2net raw serial |
+| `6666` | TCP | ser2net raw serial |
 
 ## 📂 Project Structure
 

@@ -12,7 +12,7 @@ conv = Ansi2HTMLConverter(dark_bg=True)
 
 if not os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'w') as f:
-        f.write("connection: &con1\n  accepter: tcp,3333\n  enable: off\n")
+        f.write("connection: &con1\n  accepter: tcp,6666\n  enable: off\n")
 if not os.path.exists(LOG_FILE):
     open(LOG_FILE, 'a').close()
 
@@ -44,7 +44,7 @@ def status():
 @app.route('/api/apply', methods=['POST'])
 def apply():
     new_port = request.json.get('port')
-    yaml_content = f"connection: &con1\n  accepter: tcp,3333\n  enable: on\n  options:\n    kickolduser: true\n    trace-read: {LOG_FILE}\n    trace-write: {LOG_FILE}\n  connector: serialdev,\n    device: {new_port},\n    115200N81,local\n"
+    yaml_content = f"connection: &con1\n  accepter: tcp,6666\n  enable: on\n  options:\n    kickolduser: true\n    trace-read: {LOG_FILE}\n    trace-write: {LOG_FILE}\n  connector: serialdev,\n    device: {new_port},\n    115200N81,local\n"
     with open(CONFIG_FILE, 'w') as f: f.write(yaml_content)
     
     subprocess.run(['docker', 'restart', 'ser2web_ser2net'], check=True)

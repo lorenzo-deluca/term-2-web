@@ -1,5 +1,5 @@
 connection: &con1
-  accepter: tcp,3333
+  accepter: tcp,6666
   enable: on
   options:
     kickolduser: true
