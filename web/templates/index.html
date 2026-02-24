@@ -270,6 +270,9 @@
             font-size: 0.82rem;
             line-height: 1.6;
             margin-top: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-all;
         }
 
         /* Grid */
@@ -444,7 +447,7 @@
         </div>
 
         <div id="view-console" class="view" style="padding:0;">
-            <iframe id="ttyFrame" src=""></iframe>
+            <iframe id="ttyFrame" data-loaded="false"></iframe>
         </div>
 
         <div id="view-archives" class="view">
@@ -471,7 +474,10 @@
 
             if (viewName === 'console') {
                 const frame = document.getElementById('ttyFrame');
-                if (!frame.src) frame.src = `http://${window.location.hostname}:7000`;
+                if (frame.dataset.loaded === 'false') {
+                    frame.src = `http://${window.location.hostname}:7000`;
+                    frame.dataset.loaded = 'true';
+                }
             }
             if (viewName === 'archives') loadArchivesList();
         }
@@ -523,10 +529,16 @@
             const data = await res.json();
             const list = document.getElementById('archiveList');
             list.innerHTML = '';
-            data.archives.forEach(f => {
+            if (data.archives.length === 0) {
+                list.innerHTML = '<p style="color: var(--text); padding: 8px;">No log files found.</p>';
+                return;
+            }
+            data.archives.forEach(item => {
                 const btn = document.createElement('button');
-                btn.innerText = f.replace('esp32_serial.log_', '');
-                btn.onclick = () => readArchive(f);
+                const name = item.name === 'esp32_serial.log' ? '📋 Current Log' : item.name.replace('esp32_serial.log_', '📄 ');
+                const sizeKB = (item.size / 1024).toFixed(1);
+                btn.innerHTML = `${name} <span style="color:#475569;font-size:0.75rem;">(${sizeKB} KB)</span>`;
+                btn.onclick = () => readArchive(item.name);
                 list.appendChild(btn);
             });
         }
@@ -539,6 +551,7 @@
         }
 
         fetchStatus();
+        fetchLiveLogs();
         setInterval(fetchLiveLogs, 3000);
     </script>
 </body>

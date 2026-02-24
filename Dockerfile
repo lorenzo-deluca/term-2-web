@@ -3,7 +3,7 @@ FROM python:3.11-slim-bookworm
 RUN apt-get update && apt-get install -y \
     ser2net \
     supervisor \
-    telnet \
+    socat \
     cron \
     logrotate \
     wget \
