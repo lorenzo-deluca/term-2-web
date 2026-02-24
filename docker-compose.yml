@@ -15,7 +15,7 @@ services:
     container_name: ser2web_ttyd
     command: socat - TCP:ser2web_ser2net:6666
     ports:
-      - "8080:7681"
+      - "8000:7681"
     depends_on:
       - ser2net
     restart: unless-stopped

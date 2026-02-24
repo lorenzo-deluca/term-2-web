@@ -38,7 +38,7 @@ graph LR
         direction TB
 
         SER2NET["ser2net<br><i>Serial → TCP</i><br>Port 6666"]
-        TTYD["ttyd<br><i>TCP → WebSocket</i><br>Port 8080"]
+        TTYD["ttyd<br><i>TCP → WebSocket</i><br>Port 8000"]
         FLASK["Flask Dashboard<br><i>Config & Logs</i><br>Port 5000"]
         SUPERVISOR["supervisord<br><i>Process Manager</i>"]
         LOGROTATE["logrotate + cron<br><i>Log Management</i>"]
@@ -73,7 +73,7 @@ Ser2Web orchestrates four services via **supervisord**:
 | Service | Role | Port |
 |---|---|---|
 | **ser2net** | Bridges the physical serial port to a TCP socket. All serial I/O is logged to disk. | `6666` |
-| **ttyd** | Connects to the ser2net TCP socket and exposes it as a web terminal via WebSocket. | `8080` |
+| **ttyd** | Connects to the ser2net TCP socket and exposes it as a web terminal via WebSocket. | `8000` |
 | **Flask app** | Web dashboard to select the serial port, apply configuration, monitor service status, and view logs. | `5000` |
 | **cron + logrotate** | Automatically rotates log files daily, keeping the last 30 days of history. | — |
 
@@ -81,7 +81,7 @@ Ser2Web orchestrates four services via **supervisord**:
 
 1. The **serial device** (e.g. an ESP32 on `/dev/ttyUSB0`) sends data through the USB/UART interface
 2. **ser2net** reads the serial port and exposes it as a TCP socket on port `6666`, while also writing all traffic to log files
-3. **ttyd** connects to `localhost:6666` and streams the data to the browser as an interactive web terminal on port `8080`
+3. **ttyd** connects to `localhost:6666` and streams the data to the browser as an interactive web terminal on port `8000`
 4. The **Flask dashboard** on port `5000` provides a UI to change the serial port, restart services, and browse live/archived logs
 
 ## 🚀 Installation
@@ -106,7 +106,7 @@ The container runs in **privileged mode** to access the host's serial devices un
 | URL | Service |
 |---|---|
 | `http://localhost:5001` | Dashboard |
-| `http://localhost:8080` | Web Terminal |
+| `http://localhost:8000` | Web Terminal |
 | `localhost:6666` | Raw TCP serial socket |
 
 To stop:
@@ -251,7 +251,7 @@ The generated `ser2net.yaml` configuration uses the following defaults:
 | Port | Protocol | Service |
 |---|---|---|
 | `5001` | HTTP | Flask Dashboard |
-| `8080` | HTTP/WS | ttyd Web Terminal |
+| `8000` | HTTP/WS | ttyd Web Terminal |
 | `6666` | TCP | ser2net raw serial |
 
 ## 📂 Project Structure
