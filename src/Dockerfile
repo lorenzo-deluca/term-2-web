@@ -29,7 +29,7 @@ COPY . .
 COPY logrotate_esp32.conf /etc/logrotate.d/esp32_serial
 RUN chmod 0644 /etc/logrotate.d/esp32_serial
 
-RUN mkdir -p /data
-RUN touch /data/esp32_serial.log && chmod 666 /data/esp32_serial.log
+RUN mkdir -p /app/data
+RUN touch /app/data/esp32_serial.log && chmod 666 /app/data/esp32_serial.log
 
 CMD ["/usr/bin/supervisord", "-c", "/app/supervisord.conf"]

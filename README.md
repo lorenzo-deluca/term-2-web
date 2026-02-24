@@ -105,7 +105,7 @@ The container runs in **privileged mode** to access the host's serial devices un
 
 | URL | Service |
 |---|---|
-| `http://localhost:5000` | Dashboard |
+| `http://localhost:5001` | Dashboard |
 | `http://localhost:8080` | Web Terminal |
 | `localhost:3333` | Raw TCP serial socket |
 
@@ -152,9 +152,9 @@ cd Term2Web/src
 pip install -r requirements.txt
 
 # Setup data and log directories
-sudo mkdir -p /data
-sudo touch /data/esp32_serial.log
-sudo chmod 666 /data/esp32_serial.log
+mkdir -p ./data
+touch ./data/esp32_serial.log
+chmod 666 ./data/esp32_serial.log
 
 # Setup log rotation
 sudo cp logrotate_esp32.conf /etc/logrotate.d/esp32_serial
@@ -181,9 +181,9 @@ cd Term2Web/src
 pip3 install -r requirements.txt
 
 # Setup data and log directories
-sudo mkdir -p /data
-sudo touch /data/esp32_serial.log
-sudo chmod 666 /data/esp32_serial.log
+mkdir -p ./data
+touch ./data/esp32_serial.log
+chmod 666 ./data/esp32_serial.log
 
 # Start with supervisord
 supervisord -c supervisord.conf
@@ -250,7 +250,7 @@ The generated `ser2net.yaml` configuration uses the following defaults:
 
 | Port | Protocol | Service |
 |---|---|---|
-| `5000` | HTTP | Flask Dashboard |
+| `5001` | HTTP | Flask Dashboard |
 | `8080` | HTTP/WS | ttyd Web Terminal |
 | `3333` | TCP | ser2net raw serial |
 
