@@ -156,16 +156,13 @@ def status():
 @app.route('/api/apply', methods=['POST'])
 def apply():
     new_port = request.json.get('port')
-    yaml_content = (
-        f"connection: &con1\n"
-        f"  accepter: tcp,6666\n"
-        f"  enable: on\n"
-        f"  options:\n"
-        f"    kickolduser: false\n"
-        f"  connector: serialdev,{new_port},115200n81,local\n"
-    )
     with open(CONFIG_FILE, 'w') as f:
-        f.write(yaml_content)
+        f.write("connection: &con1\n")
+        f.write("  accepter: tcp,6666\n")
+        f.write("  enable: on\n")
+        f.write("  options:\n")
+        f.write("    kickolduser: false\n")
+        f.write(f"  connector: serialdev,{new_port},115200N81,local\n")
 
     try:
         docker_client.containers.get('ser2web_ser2net').restart(timeout=10)
