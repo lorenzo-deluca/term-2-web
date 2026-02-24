@@ -1,12 +1,12 @@
 import os
 import glob
 import socket
-import subprocess
 import threading
 import time
 from datetime import datetime
 from flask import Flask, request, render_template, jsonify
 from ansi2html import Ansi2HTMLConverter
+import docker
 
 app = Flask(__name__)
 CONFIG_FILE = '/data/ser2net.yaml'
@@ -14,6 +14,7 @@ LOG_DIR = '/data'
 LOG_FILE = f'{LOG_DIR}/esp32_serial.log'
 SER2NET_HOST = 'ser2web_ser2net'
 SER2NET_PORT = 6666
+docker_client = docker.from_env()
 conv = Ansi2HTMLConverter(dark_bg=True)
 
 if not os.path.exists(CONFIG_FILE):
@@ -112,13 +113,10 @@ def get_current_port():
 
 
 def get_service_status(container_name):
-    """Check service status via docker inspect."""
+    """Check service status via Docker SDK."""
     try:
-        res = subprocess.run(
-            ['docker', 'inspect', '-f', '{{.State.Running}}', container_name],
-            capture_output=True, text=True, timeout=5
-        )
-        return 'true' in res.stdout.strip()
+        container = docker_client.containers.get(container_name)
+        return container.status == 'running'
     except Exception:
         return False
 
@@ -170,10 +168,10 @@ def apply():
         f.write(yaml_content)
 
     try:
-        subprocess.run(['docker', 'restart', 'ser2web_ser2net'], check=True, timeout=30)
-        subprocess.run(['docker', 'restart', 'ser2web_ttyd'], check=True, timeout=30)
+        docker_client.containers.get('ser2web_ser2net').restart(timeout=10)
+        docker_client.containers.get('ser2web_ttyd').restart(timeout=10)
         return jsonify({'success': True})
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

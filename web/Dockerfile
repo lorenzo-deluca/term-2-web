@@ -1,7 +1,6 @@
 FROM python:3.11-slim-bookworm
 
 RUN apt-get update && apt-get install -y \
-    docker.io \
     cron \
     logrotate \
     && rm -rf /var/lib/apt/lists/*
