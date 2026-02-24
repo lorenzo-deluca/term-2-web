@@ -13,7 +13,7 @@ services:
   ttyd:
     build: ./ttyd
     container_name: ser2web_ttyd
-    command: ttyd socat -,raw,echo=0 TCP:ser2web_ser2net:6666
+    command: socat - TCP:ser2web_ser2net:6666
     ports:
       - "7000:7681"
     depends_on:
