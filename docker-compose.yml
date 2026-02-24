@@ -1,0 +1,31 @@
+services:
+  ser2net:
+    build: ./ser2net
+    container_name: ser2web_ser2net
+    privileged: true
+    volumes:
+      - /dev:/dev
+      - ./data:/data
+    ports:
+      - "3333:3333"
+    restart: unless-stopped
+
+  ttyd:
+    build: ./ttyd
+    container_name: ser2web_ttyd
+    command: socat - TCP:ser2web_ser2net:3333
+    ports:
+      - "8080:7681"
+    depends_on:
+      - ser2net
+    restart: unless-stopped
+
+  web-ui:
+    build: ./web
+    container_name: ser2web_web
+    volumes:
+      - ./data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "5001:5000"
+    restart: unless-stopped
