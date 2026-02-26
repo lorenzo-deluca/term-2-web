@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>⚡ Ser2Web</strong><br>
+  <strong>⚡ Term2Web</strong><br>
   <em>Serial-to-Web Bridge — Access your serial devices from the browser</em>
 </p>
 
@@ -12,18 +12,18 @@
 
 ---
 
-**Ser2Web** is an open source tool that exposes a local serial port (USB/UART) over the network, providing both a **raw TCP socket** and an **interactive web terminal** directly in your browser. It includes a modern **web dashboard** to configure the serial port, monitor running services, and browse historical logs — all from a single, containerized application.
+**Term2Web** is an open source tool that exposes a local serial port (USB/UART) over the network, providing both a **raw TCP socket** and an **interactive web terminal** directly in your browser. It includes a modern **web dashboard** to configure the serial port, monitor running services, and browse historical logs — all fully containerized with Docker Compose.
 
 > This is an open source project by [Lorenzo De Luca](https://github.com/lorenzo-deluca). Contributions, issues, and feedback are welcome!
 
 ## ✨ Features
 
 - 🔌 **Serial-to-TCP bridge** via [ser2net](https://github.com/cminyard/ser2net) — connect any tool to your serial port over TCP
-- 🖥️ **Web-based interactive terminal** via [ttyd](https://github.com/tsl0922/ttyd) — full serial console in the browser
+- 🖥️ **Web-based interactive terminal** via [ttyd](https://github.com/tsl0922/ttyd) — full serial console in the browser with read/write support
 - ⚙️ **Configuration dashboard** — select serial port, apply settings, and restart services from the UI
-- 📋 **Live log preview** — tail the last 50 lines of serial output with ANSI color support
-- 📁 **Log archive viewer** — browse and read historical log files with automatic rotation
-- 🐳 **Docker-ready** — single `docker-compose up` to get started
+- 📋 **Live serial monitor** — real-time log preview with ANSI color support and reception timestamps
+- 📁 **Daily log archives** — automatic daily log rotation with date-based files and reverse-chronological display
+- 🐳 **Docker Compose** — multi-container architecture, single `docker-compose up` to get started
 - 🏗️ **Multi-architecture** — supports `x86_64` and `aarch64` (ARM64)
 
 ## 🏛️ Architecture
@@ -34,24 +34,18 @@ graph LR
         DEV["🔌 USB/UART<br>Serial Device"]
     end
 
-    subgraph "Ser2Web Container"
+    subgraph "Docker Compose Stack"
         direction TB
 
         SER2NET["ser2net<br><i>Serial → TCP</i><br>Port 6666"]
         TTYD["ttyd<br><i>TCP → WebSocket</i><br>Port 7000"]
         FLASK["Flask Dashboard<br><i>Config & Logs</i><br>Port 5000"]
-        SUPERVISOR["supervisord<br><i>Process Manager</i>"]
-        LOGROTATE["logrotate + cron<br><i>Log Management</i>"]
-        LOGS[("Log Files<br>/data/*.log")]
+        TRACE[("Trace File<br>/data/raw_serial.trace")]
+        LOGS[("Daily Logs<br>/data/esp32_serial_*.log")]
 
-        SUPERVISOR --> SER2NET
-        SUPERVISOR --> TTYD
-        SUPERVISOR --> FLASK
-        SUPERVISOR --> LOGROTATE
-
-        SER2NET -->|"trace-read/write"| LOGS
-        FLASK -->|"reads"| LOGS
-        LOGROTATE -->|"rotates"| LOGS
+        SER2NET -->|"trace-read"| TRACE
+        FLASK -->|"watches"| TRACE
+        FLASK -->|"timestamps & writes"| LOGS
     end
 
     subgraph "User Access"
@@ -68,40 +62,57 @@ graph LR
 
 ## 🔧 How It Works
 
-Ser2Web orchestrates four services via **supervisord**:
+Term2Web uses **Docker Compose** to orchestrate three containers:
 
-| Service | Role | Port |
-|---|---|---|
-| **ser2net** | Bridges the physical serial port to a TCP socket. All serial I/O is logged to disk. | `6666` |
-| **ttyd** | Connects to the ser2net TCP socket and exposes it as a web terminal via WebSocket. | `7000` |
-| **Flask app** | Web dashboard to select the serial port, apply configuration, monitor service status, and view logs. | `5000` |
-| **cron + logrotate** | Automatically rotates log files daily, keeping the last 30 days of history. | — |
+| Container | Service | Role | Port |
+|---|---|---|---|
+| `ser2web_ser2net` | **ser2net** | Bridges the physical serial port to a TCP socket. Writes raw trace data to disk. | `6666` |
+| `ser2web_ttyd` | **ttyd** | Connects to the ser2net TCP socket and exposes it as an interactive web terminal via WebSocket. | `7000` |
+| `ser2web_web` | **Flask app** | Web dashboard. Watches the trace file, adds timestamps, writes daily log files, and provides the configuration UI. | `5001` |
 
 ### Data Flow
 
 1. The **serial device** (e.g. an ESP32 on `/dev/ttyUSB0`) sends data through the USB/UART interface
-2. **ser2net** reads the serial port and exposes it as a TCP socket on port `6666`, while also writing all traffic to log files
-3. **ttyd** connects to `localhost:6666` and streams the data to the browser as an interactive web terminal on port `7000`
-4. The **Flask dashboard** on port `5000` provides a UI to change the serial port, restart services, and browse live/archived logs
+2. **ser2net** reads the serial port and exposes it as a TCP socket on port `6666`, while writing raw serial data to a trace file (`/data/raw_serial.trace`)
+3. **ttyd** connects to `ser2net:6666` and streams the data to the browser as an interactive web terminal on port `7000` (with write support via the `-W` flag)
+4. The **Flask dashboard** watches the trace file, timestamps each line (`[YYYY-MM-DD HH:MM:SS]`), and writes to daily log files (`/data/esp32_serial_YYYY-MM-DD.log`). It provides a UI to change the serial port, restart services, and browse live/archived logs
+
+### Logging
+
+Serial output is automatically logged with reception timestamps to date-based files:
+
+```
+/data/esp32_serial_2026-02-26.log
+/data/esp32_serial_2026-02-25.log
+...
+```
+
+Each line is prefixed with a timestamp:
+```
+[2026-02-26 09:30:15] I (12345) wifi: connected to AP
+[2026-02-26 09:30:16] I (12346) app: Starting main loop
+```
+
+Logs are displayed in **reverse chronological order** (newest first) in both the live monitor and the archive viewer.
 
 ## 🚀 Installation
 
 ### Docker Compose (Recommended)
 
-This is the simplest and recommended way to run Ser2Web.
+This is the simplest and recommended way to run Term2Web.
 
 **Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
 ```bash
 # Clone the repository
 git clone https://github.com/lorenzo-deluca/Term2Web.git
-cd Term2Web/src
+cd Term2Web
 
 # Start the application
 docker-compose up -d
 ```
 
-The container runs in **privileged mode** to access the host's serial devices under `/dev`.
+The `ser2net` container runs in **privileged mode** to access the host's serial devices under `/dev`.
 
 | URL | Service |
 |---|---|
@@ -115,120 +126,11 @@ To stop:
 docker-compose down
 ```
 
----
-
-### Native Installation
-
-For running directly on the host machine without Docker. All platforms require the same core dependencies.
-
-#### Prerequisites
-
-| Dependency | Purpose |
-|---|---|
-| **Python 3.11+** | Flask dashboard |
-| **ser2net** | Serial-to-TCP bridge |
-| **ttyd** | Web terminal |
-| **supervisor** | Process manager |
-| **logrotate** + **cron** | Log rotation |
-
----
-
-#### 🐧 Linux (Debian/Ubuntu)
-
-```bash
-# Install system dependencies
-sudo apt-get update
-sudo apt-get install -y ser2net supervisor telnet cron logrotate wget
-
-# Install ttyd
-ARCH=$(uname -m)
-sudo wget -q "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.${ARCH}" \
-  -O /usr/local/bin/ttyd
-sudo chmod +x /usr/local/bin/ttyd
-
-# Clone and install Python dependencies
-git clone https://github.com/lorenzo-deluca/Term2Web.git
-cd Term2Web/src
-pip install -r requirements.txt
-
-# Setup data and log directories
-mkdir -p ./data
-touch ./data/esp32_serial.log
-chmod 666 ./data/esp32_serial.log
-
-# Setup log rotation
-sudo cp logrotate_esp32.conf /etc/logrotate.d/esp32_serial
-sudo chmod 0644 /etc/logrotate.d/esp32_serial
-
-# Start with supervisord
-supervisord -c supervisord.conf
-```
-
----
-
-#### 🍎 macOS
-
-```bash
-# Install system dependencies via Homebrew
-brew install ser2net supervisor
-
-# Install ttyd
-brew install ttyd
-
-# Clone and install Python dependencies
-git clone https://github.com/lorenzo-deluca/Term2Web.git
-cd Term2Web/src
-pip3 install -r requirements.txt
-
-# Setup data and log directories
-mkdir -p ./data
-touch ./data/esp32_serial.log
-chmod 666 ./data/esp32_serial.log
-
-# Start with supervisord
-supervisord -c supervisord.conf
-```
-
-> [!NOTE]
-> On macOS, serial devices typically appear as `/dev/tty.usbserial-*` or `/dev/cu.usbmodem*` instead of `/dev/ttyUSB*`.
-
----
-
-#### 🪟 Windows
-
-Running natively on Windows requires **WSL2** (Windows Subsystem for Linux), since `ser2net` and `ttyd` are Linux-native tools.
-
-```powershell
-# 1. Install WSL2 (from PowerShell as Administrator)
-wsl --install -d Ubuntu
-
-# 2. Inside WSL2, follow the Linux installation steps above
-```
-
-> [!IMPORTANT]
-> To pass USB devices from Windows into WSL2, you need [usbipd-win](https://github.com/dorssel/usbipd-win):
->
-> ```powershell
-> # From PowerShell (Administrator)
-> winget install usbipd
->
-> # List USB devices
-> usbipd list
->
-> # Bind and attach your serial device to WSL2
-> usbipd bind --busid <BUS-ID>
-> usbipd attach --wsl --busid <BUS-ID>
-> ```
->
-> After attaching, the device will appear as `/dev/ttyUSB0` inside WSL2.
-
-Alternatively, use **Docker Desktop for Windows** with the Docker Compose method described above.
-
 ## ⚙️ Configuration
 
 ### Serial Port
 
-Use the web dashboard at `http://localhost:5000` to:
+Use the web dashboard at `http://localhost:5001` to:
 
 1. Select the serial port from the dropdown (auto-detected)
 2. Click **Apply & Restart** to reconfigure `ser2net` and `ttyd`
@@ -252,21 +154,27 @@ The generated `ser2net.yaml` configuration uses the following defaults:
 |---|---|---|
 | `5001` | HTTP | Flask Dashboard |
 | `7000` | HTTP/WS | ttyd Web Terminal |
-| `6666` | TCP | ser2net raw serial |
+| `6666` | TCP | ser2net raw serial socket |
 
 ## 📂 Project Structure
 
 ```
 Term2Web/
-├── src/
-│   ├── app.py                  # Flask web application
+├── docker-compose.yml        # Multi-container orchestration
+├── ser2net/
+│   └── Dockerfile            # ser2net container
+├── ttyd/
+│   └── Dockerfile            # ttyd container (with socat)
+├── web/
+│   ├── Dockerfile            # Flask dashboard container
+│   ├── app.py                # Flask application + trace watcher
 │   ├── templates/
-│   │   └── index.html          # Dashboard UI (single-page app)
-│   ├── Dockerfile              # Multi-arch Docker image
-│   ├── docker-compose.yml      # One-command deployment
-│   ├── supervisord.conf        # Process manager configuration
-│   ├── logrotate_esp32.conf    # Log rotation policy
-│   └── requirements.txt        # Python dependencies
+│   │   └── index.html        # Dashboard UI (single-page app)
+│   └── requirements.txt      # Python dependencies
+├── data/                     # Shared volume for config & logs
+│   ├── ser2net.yaml          # ser2net configuration (auto-generated)
+│   ├── raw_serial.trace      # Raw ser2net trace file
+│   └── esp32_serial_*.log    # Daily timestamped log files
 └── README.md
 ```
 

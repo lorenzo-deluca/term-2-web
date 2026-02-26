@@ -1,137 +1,175 @@
 import os
 import glob
-import socket
 import threading
-import time
 from datetime import datetime
 from flask import Flask, request, render_template, jsonify
 from ansi2html import Ansi2HTMLConverter
 import docker
 
 app = Flask(__name__)
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 CONFIG_FILE = '/data/ser2net.yaml'
 LOG_DIR = '/data'
-LOG_FILE = f'{LOG_DIR}/esp32_serial.log'
-SER2NET_HOST = 'ser2web_ser2net'
-SER2NET_PORT = 6666
+TRACE_FILE = os.path.join(LOG_DIR, 'raw_serial.trace')
+TRACE_MAX_SIZE = 50 * 1024 * 1024  # Truncate raw trace at 50 MB
+
 docker_client = docker.from_env()
 conv = Ansi2HTMLConverter(dark_bg=True)
 
+# Create default ser2net config if missing
 if not os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'w') as f:
         f.write("connection: &con1\n  accepter: tcp,6666\n  enable: off\n")
-if not os.path.exists(LOG_FILE):
-    open(LOG_FILE, 'a').close()
 
 
 # ---------------------------------------------------------------------------
-# Background serial logger — connects to ser2net TCP and timestamps each line
+# Background trace-file watcher
+# Reads the raw ser2net trace file, timestamps each line, writes daily logs.
+# This approach does NOT connect to the ser2net TCP port, so ttyd is free to
+# use the connection exclusively without conflicts.
 # ---------------------------------------------------------------------------
-_logger_stop = threading.Event()
+_stop = threading.Event()
 
 
-def serial_logger():
-    """Background thread: connects to ser2net, timestamps each line, writes to log."""
-    while not _logger_stop.is_set():
+def _today_log_path():
+    return os.path.join(LOG_DIR, f"esp32_serial_{datetime.now():%Y-%m-%d}.log")
+
+
+def _trace_watcher():
+    last_inode = None
+    last_pos = 0
+    buf = ''
+    current_day = None
+    fh = None
+
+    while not _stop.is_set():
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2.0)
-            sock.connect((SER2NET_HOST, SER2NET_PORT))
-            app.logger.info(f"Serial logger connected to {SER2NET_HOST}:{SER2NET_PORT}")
+            if not os.path.exists(TRACE_FILE):
+                _stop.wait(2)
+                continue
 
-            buf = ''
-            with open(LOG_FILE, 'a') as log:
-                while not _logger_stop.is_set():
-                    try:
-                        data = sock.recv(4096)
-                        if not data:
-                            break  # Connection closed
-                        text = data.decode('utf-8', errors='replace')
-                        buf += text
+            st = os.stat(TRACE_FILE)
 
-                        # Normalize line endings and split into lines
-                        buf = buf.replace('\r\n', '\n').replace('\r', '\n')
-                        while '\n' in buf:
-                            line, buf = buf.split('\n', 1)
-                            ts = datetime.now().strftime('[%Y-%m-%d %H:%M:%S] ')
-                            log.write(ts + line + '\n')
-                            log.flush()
-                    except socket.timeout:
-                        # Flush partial buffer after timeout (incomplete line)
-                        if buf.strip():
-                            ts = datetime.now().strftime('[%Y-%m-%d %H:%M:%S] ')
-                            log.write(ts + buf + '\n')
-                            log.flush()
-                            buf = ''
-                        continue
-            sock.close()
-        except (ConnectionRefusedError, OSError) as e:
-            app.logger.debug(f"Serial logger connection failed: {e}, retrying...")
-        except Exception as e:
-            app.logger.error(f"Serial logger error: {e}")
+            # Detect file recreation or truncation (ser2net restart)
+            if st.st_ino != last_inode or st.st_size < last_pos:
+                last_inode = st.st_ino
+                last_pos = 0
+                buf = ''
 
-        # Wait before reconnecting
-        _logger_stop.wait(3)
+            # Prevent unbounded trace growth
+            if st.st_size > TRACE_MAX_SIZE:
+                try:
+                    open(TRACE_FILE, 'w').close()
+                except Exception:
+                    pass
+                last_pos = 0
+                buf = ''
+                continue
+
+            # Nothing new to read
+            if st.st_size <= last_pos:
+                _stop.wait(0.3)
+                continue
+
+            # Read new data
+            with open(TRACE_FILE, 'rb') as tf:
+                tf.seek(last_pos)
+                raw = tf.read()
+                last_pos = tf.tell()
+
+            text = raw.decode('utf-8', errors='replace')
+            buf += text
+            buf = buf.replace('\r\n', '\n').replace('\r', '\n')
+
+            # Strip control chars (keep ESC for ANSI colours, keep \n and \t)
+            buf = ''.join(
+                c for c in buf
+                if c == '\x1b' or c == '\n' or c == '\t' or ord(c) >= 32
+            )
+
+            while '\n' in buf:
+                line, buf = buf.split('\n', 1)
+                if not line.strip():
+                    continue
+
+                now = datetime.now()
+                day = f"{now:%Y-%m-%d}"
+
+                # Rotate file handle on day change
+                if day != current_day:
+                    if fh:
+                        fh.close()
+                    fh = open(os.path.join(LOG_DIR, f"esp32_serial_{day}.log"), 'a')
+                    current_day = day
+
+                fh.write(f"[{now:%Y-%m-%d %H:%M:%S}] {line}\n")
+                fh.flush()
+
+            _stop.wait(0.3)
+
+        except Exception as exc:
+            app.logger.error("Trace watcher error: %s", exc)
+            if fh:
+                try:
+                    fh.close()
+                except Exception:
+                    pass
+                fh = None
+                current_day = None
+            _stop.wait(3)
 
 
-# Start the logger thread
-_logger_thread = threading.Thread(target=serial_logger, daemon=True, name='serial-logger')
-_logger_thread.start()
+threading.Thread(target=_trace_watcher, daemon=True, name='trace-watcher').start()
 
 
 # ---------------------------------------------------------------------------
-# Utility functions
+# Helpers
 # ---------------------------------------------------------------------------
 def get_available_ports():
-    """Scan /dev for serial ports — works reliably inside Docker containers."""
+    """Scan /dev for serial ports."""
     patterns = [
-        '/dev/ttyUSB*',
-        '/dev/ttyACM*',
-        '/dev/ttyAMA*',
-        '/dev/ttyS*',
-        '/dev/tty.usbserial*',   # macOS
-        '/dev/tty.usbmodem*',    # macOS
-        '/dev/cu.usbserial*',    # macOS
-        '/dev/cu.usbmodem*',     # macOS
+        '/dev/ttyUSB*', '/dev/ttyACM*', '/dev/ttyAMA*', '/dev/ttyS*',
+        '/dev/tty.usbserial*', '/dev/tty.usbmodem*',
+        '/dev/cu.usbserial*', '/dev/cu.usbmodem*',
     ]
     ports = []
-    for pattern in patterns:
-        ports.extend(sorted(glob.glob(pattern)))
+    for p in patterns:
+        ports.extend(sorted(glob.glob(p)))
     return ports
 
 
 def get_current_port():
     if not os.path.exists(CONFIG_FILE):
-        return "No configuration"
-    with open(CONFIG_FILE, 'r') as f:
+        return 'No configuration'
+    with open(CONFIG_FILE) as f:
         for line in f:
             if 'serialdev,' in line:
                 return line.split('serialdev,')[1].split(',')[0].strip()
-            elif 'device:' in line:
-                return line.split('device:')[1].strip().strip(',')
-    return "Not configured"
+    return 'Not configured'
 
 
-def get_service_status(container_name):
-    """Check service status via Docker SDK."""
+def get_service_status(name):
     try:
-        container = docker_client.containers.get(container_name)
-        return container.status == 'running'
+        return docker_client.containers.get(name).status == 'running'
     except Exception:
         return False
 
 
-def read_log_safe(filepath, max_lines=None):
-    """Read a timestamped log file safely."""
+def read_log(path, last_n=None, reverse=False):
+    """Read a text log file, optionally tail and/or reverse."""
     try:
-        with open(filepath, 'r', errors='replace') as f:
-            text = f.read()
-        if max_lines:
-            lines = text.strip().split('\n')
-            text = '\n'.join(lines[-max_lines:])
-        return text
-    except Exception as e:
-        return f"Error reading log: {e}"
+        with open(path, 'r', errors='replace') as f:
+            lines = f.readlines()
+        if last_n:
+            lines = lines[-last_n:]
+        if reverse:
+            lines.reverse()
+        return ''.join(lines)
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
 # ---------------------------------------------------------------------------
@@ -143,67 +181,65 @@ def index():
 
 
 @app.route('/api/status')
-def status():
-    ports = get_available_ports()
+def api_status():
     return jsonify({
         'current_port': get_current_port(),
-        'available_ports': ports,
+        'available_ports': get_available_ports(),
         'ser2net_active': get_service_status('ser2web_ser2net'),
-        'ttyd_active': get_service_status('ser2web_ttyd')
+        'ttyd_active': get_service_status('ser2web_ttyd'),
     })
 
 
 @app.route('/api/apply', methods=['POST'])
-def apply():
-    new_port = request.json.get('port')
+def api_apply():
+    port = request.json.get('port')
     with open(CONFIG_FILE, 'w') as f:
         f.write("connection: &con1\n")
         f.write("  accepter: tcp,6666\n")
         f.write("  enable: on\n")
         f.write("  options:\n")
-        f.write("    kickolduser: false\n")
-        f.write(f"  connector: serialdev,{new_port},115200N81,local\n")
+        f.write("    kickolduser: true\n")
+        f.write(f"    trace-read: {TRACE_FILE}\n")
+        f.write(f"  connector: serialdev,{port},115200N81,local\n")
 
     try:
         docker_client.containers.get('ser2web_ser2net').restart(timeout=10)
         docker_client.containers.get('ser2web_ttyd').restart(timeout=10)
         return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception as exc:
+        return jsonify({'success': False, 'error': str(exc)}), 500
 
 
 @app.route('/api/logs/live')
-def logs_live():
-    text = read_log_safe(LOG_FILE, max_lines=50)
+def api_logs_live():
+    log_path = _today_log_path()
+    if not os.path.exists(log_path):
+        return jsonify({'html': '<span style="color:#475569">Waiting for serial data…</span>'})
+    text = read_log(log_path, last_n=80, reverse=True)
     return jsonify({'html': conv.convert(text, full=False)})
 
 
 @app.route('/api/logs/archives')
-def list_archives():
+def api_logs_archives():
     files = []
-    for f in os.listdir(LOG_DIR):
-        if f.startswith('esp32_serial.log'):
-            filepath = os.path.join(LOG_DIR, f)
-            size = os.path.getsize(filepath)
-            if size > 0:
-                files.append({'name': f, 'size': size})
-    current = [f for f in files if f['name'] == 'esp32_serial.log']
-    rotated = sorted(
-        [f for f in files if f['name'] != 'esp32_serial.log'],
-        key=lambda x: x['name'],
-        reverse=True
-    )
-    return jsonify({'archives': current + rotated})
+    for name in os.listdir(LOG_DIR):
+        if name.startswith('esp32_serial_') and name.endswith('.log'):
+            fp = os.path.join(LOG_DIR, name)
+            sz = os.path.getsize(fp)
+            if sz > 0:
+                files.append({'name': name, 'size': sz})
+    files.sort(key=lambda x: x['name'], reverse=True)
+    return jsonify({'archives': files})
 
 
 @app.route('/api/logs/read/<filename>')
-def read_archive(filename):
+def api_logs_read(filename):
     if '/' in filename or '..' in filename:
         return jsonify({'html': 'Invalid filename'}), 400
-    filepath = os.path.join(LOG_DIR, filename)
-    if not os.path.exists(filepath):
+    fp = os.path.join(LOG_DIR, filename)
+    if not os.path.exists(fp):
         return jsonify({'html': 'File not found'}), 404
-    text = read_log_safe(filepath)
+    text = read_log(fp, reverse=True)
     return jsonify({'html': conv.convert(text, full=False)})
 
 

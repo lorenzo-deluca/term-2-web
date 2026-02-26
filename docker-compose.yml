@@ -20,6 +20,15 @@ services:
       - ser2net
     restart: unless-stopped
 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.serial-logs.rule=PathPrefix(`/serial-logs`)"
+      - "traefik.http.routers.serial-logs.entrypoints=web"
+      - "traefik.http.routers.serial-logs.priority=10"
+      - "traefik.http.routers.serial-logs.middlewares=serial-logs-strip"
+      - "traefik.http.middlewares.serial-logs-strip.stripPrefix.prefixes=/serial-logs"
+      - "traefik.http.services.serial-logs.loadbalancer.server.port=7000"
+
   web-ui:
     build: ./web
     container_name: ser2web_web
@@ -31,3 +40,14 @@ services:
     ports:
       - "5001:5000"
     restart: unless-stopped
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web-ui.rule=PathPrefix(`/web-ui`)"
+      - "traefik.http.routers.web-ui.entrypoints=web"
+      - "traefik.http.routers.web-ui.priority=10"
+      - "traefik.http.routers.web-ui.middlewares=web-ui-strip"
+      - "traefik.http.middlewares.web-ui-strip.stripPrefix.prefixes=/web-ui"
+      - "traefik.http.services.web-ui.loadbalancer.server.port=5001"
+
+    

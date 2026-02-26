@@ -4,105 +4,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ser2Web — Serial to Web Dashboard</title>
+    <title>Term2Web — Serial-to-Web Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0a0e17;
+            --bg: #0b0f19;
             --panel: #111827;
-            --panel-hover: #1a2332;
+            --panel-alt: #151d2e;
+            --panel-hover: #1c2740;
             --border: #1e293b;
-            --text: #94a3b8;
+            --border-light: #2a3a52;
+            --text: #8b9cb8;
             --text-bright: #e2e8f0;
             --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.15);
-            --accent-gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            --accent-soft: rgba(59, 130, 246, 0.12);
+            --accent-glow: rgba(59, 130, 246, 0.20);
+            --accent-gradient: linear-gradient(135deg, #3b82f6, #6366f1);
             --success: #22c55e;
+            --success-soft: rgba(34, 197, 94, 0.12);
             --danger: #ef4444;
-            --radius: 10px;
+            --danger-soft: rgba(239, 68, 68, 0.12);
+            --warning: #f59e0b;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.3);
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
             color: var(--text);
-            margin: 0;
             display: flex;
             height: 100vh;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Sidebar */
+        /* ── Sidebar ────────────────────────────────────────────── */
         .sidebar {
             width: 260px;
             background: var(--panel);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
+            flex-shrink: 0;
         }
 
         .sidebar-header {
             padding: 24px 20px;
             border-bottom: 1px solid var(--border);
-            background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%);
+            background: linear-gradient(180deg, rgba(59, 130, 246, 0.06) 0%, transparent 100%);
         }
 
         .logo-row {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
         .logo-icon {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             background: var(--accent-gradient);
-            border-radius: 8px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 20px;
             color: #fff;
             flex-shrink: 0;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
         }
 
         .logo-text h2 {
-            margin: 0;
             font-size: 1.15rem;
             font-weight: 700;
             color: #fff;
             letter-spacing: -0.02em;
+            line-height: 1.2;
         }
 
         .logo-text span {
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             color: var(--text);
             font-weight: 400;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.01em;
+        }
+
+        .nav-section {
+            padding: 12px 0;
+            flex: 1;
         }
 
         .nav-btn {
             background: none;
             border: none;
             color: var(--text);
-            padding: 14px 20px;
+            padding: 12px 20px;
             text-align: left;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-family: inherit;
             font-weight: 500;
             cursor: pointer;
-            border-bottom: 1px solid var(--border);
             border-left: 3px solid transparent;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             display: flex;
             align-items: center;
             gap: 10px;
+            width: 100%;
         }
 
         .nav-btn:hover {
@@ -111,24 +128,23 @@
         }
 
         .nav-btn.active {
-            background: var(--accent-glow);
+            background: var(--accent-soft);
             color: #fff;
             border-left-color: var(--accent);
         }
 
         .nav-icon {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             width: 22px;
             text-align: center;
         }
 
         .sidebar-footer {
-            margin-top: auto;
             padding: 16px 20px;
             border-top: 1px solid var(--border);
             font-size: 0.72rem;
-            color: #475569;
-            line-height: 1.5;
+            color: #3d4f6b;
+            line-height: 1.6;
         }
 
         .sidebar-footer a {
@@ -141,7 +157,7 @@
             text-decoration: underline;
         }
 
-        /* Content Area */
+        /* ── Content Area ────────────────────────────────────────── */
         .content {
             flex: 1;
             display: flex;
@@ -155,6 +171,7 @@
             padding: 24px;
             flex: 1;
             overflow-y: auto;
+            gap: 20px;
         }
 
         .view.active {
@@ -162,61 +179,88 @@
             flex-direction: column;
         }
 
-        /* Cards */
+        /* ── Cards ────────────────────────────────────────────── */
         .card {
             background: var(--panel);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 22px;
-            margin-bottom: 20px;
+            box-shadow: var(--shadow);
             transition: border-color 0.2s ease;
         }
 
         .card:hover {
-            border-color: #2d3a4f;
+            border-color: var(--border-light);
         }
 
-        h3 {
-            margin: 0 0 16px 0;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text);
-            padding-bottom: 12px;
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            padding-bottom: 14px;
             border-bottom: 1px solid var(--border);
         }
 
-        .status-on {
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--text);
+        }
+
+        /* ── Status Badges ────────────────────────────────────── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: var(--success-soft);
             color: var(--success);
-            font-weight: 600;
         }
 
-        .status-off {
+        .badge-danger {
+            background: var(--danger-soft);
             color: var(--danger);
-            font-weight: 600;
         }
 
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
+        .badge-dot {
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            margin-right: 6px;
-            vertical-align: middle;
         }
 
-        .status-dot.on {
+        .badge-success .badge-dot {
             background: var(--success);
             box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+            animation: pulse-green 2s ease-in-out infinite;
         }
 
-        .status-dot.off {
+        .badge-danger .badge-dot {
             background: var(--danger);
             box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
         }
 
-        /* Form Elements */
+        @keyframes pulse-green {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* ── Form Elements ────────────────────────────────────── */
         select,
         button {
             font-family: inherit;
@@ -224,9 +268,9 @@
             color: var(--text-bright);
             border: 1px solid var(--border);
             padding: 10px 14px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             font-size: 0.85rem;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
         }
 
         select:focus {
@@ -250,136 +294,187 @@
             border: none;
             color: #fff;
             font-weight: 600;
-            padding: 10px 20px;
+            padding: 10px 22px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
         }
 
         .btn-primary:hover {
             opacity: 0.9;
-            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
         }
 
-        /* Log Container */
+        /* ── Log Container ────────────────────────────────────── */
         .log-container {
             background: #000;
             padding: 16px;
             border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border-radius: var(--radius-sm);
             overflow-y: auto;
-            height: 300px;
-            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-            font-size: 0.82rem;
-            line-height: 1.6;
-            margin-top: 12px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.8rem;
+            line-height: 1.7;
             white-space: pre-wrap;
             word-wrap: break-word;
-            word-break: break-all;
+            color: #a0aec0;
         }
 
-        /* Grid */
+        /* ── Grid ────────────────────────────────────────────── */
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
 
-        /* Service Row */
+        /* ── Service Rows ────────────────────────────────────── */
         .service-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
+            padding: 10px 0;
         }
 
         .service-row+.service-row {
             border-top: 1px solid var(--border);
-            padding-top: 10px;
-            margin-top: 2px;
+            padding-top: 12px;
         }
 
         .service-label {
             font-size: 0.85rem;
             color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        /* Config area */
+        .service-label-icon {
+            font-size: 1rem;
+        }
+
+        /* ── Config Row ────────────────────────────────────────── */
         .config-row {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             align-items: center;
-            margin-top: 8px;
+            margin-top: 10px;
         }
 
         .config-row select {
             flex: 1;
         }
 
-        /* iframe */
+        /* ── iframe ────────────────────────────────────────────── */
         iframe {
             width: 100%;
-            height: 100%;
             border: none;
             background: #000;
-            border-radius: var(--radius);
+            border-radius: var(--radius-sm);
+            flex: 1;
         }
 
-        /* Archives */
-        .archive-list button {
-            display: block;
+        /* ── Archive List ────────────────────────────────────── */
+        .archive-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .archive-btn {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             width: 100%;
             text-align: left;
-            margin-bottom: 4px;
+            padding: 10px 14px;
             border-left: 3px solid transparent;
             font-size: 0.82rem;
-            padding: 8px 12px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            background: none;
+            border-right: none;
+            border-top: none;
+            border-bottom: none;
+            color: var(--text);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
         }
 
-        .archive-list button:hover {
+        .archive-btn:hover {
             border-left-color: var(--accent);
-            background: var(--accent-glow);
+            background: var(--accent-soft);
+            color: var(--text-bright);
         }
 
-        /* ANSI Base CSS */
+        .archive-btn.active {
+            border-left-color: var(--accent);
+            background: var(--accent-soft);
+            color: #fff;
+        }
+
+        .archive-size {
+            font-size: 0.72rem;
+            color: #3d4f6b;
+            font-weight: 400;
+        }
+
+        /* ── ANSI Colour Support ────────────────────────────── */
         .ansi2html-content {
             color: #aaaaaa;
         }
 
         .ansi31 {
-            color: #aa0000;
+            color: #ff6b6b;
         }
 
         .ansi32 {
-            color: #00aa00;
+            color: #51cf66;
         }
 
         .ansi33 {
-            color: #aa5500;
+            color: #fcc419;
         }
 
         .ansi34 {
-            color: #0000aa;
+            color: #339af0;
         }
 
         .ansi35 {
-            color: #E850A8;
+            color: #da77f2;
         }
 
         .ansi36 {
-            color: #00aaaa;
+            color: #3bc9db;
         }
 
         .ansi90 {
             color: #555555;
         }
 
-        /* Action message */
+        /* ── Action Message ────────────────────────────────── */
         #actionMsg {
             font-size: 0.82rem;
             color: var(--accent);
-            min-height: 20px;
+            min-height: 22px;
+            margin-top: 6px;
         }
 
+        /* ── Typography ────────────────────────────────────── */
         p {
             margin: 6px 0;
+            font-size: 0.88rem;
+        }
+
+        /* ── Helpers ────────────────────────────────────────── */
+        .flex-1 {
+            flex: 1;
+        }
+
+        .min-h-0 {
+            min-height: 0;
+        }
+
+        .port-value {
+            color: var(--text-bright);
+            font-weight: 600;
             font-size: 0.88rem;
         }
     </style>
@@ -391,21 +486,23 @@
             <div class="logo-row">
                 <div class="logo-icon">⚡</div>
                 <div class="logo-text">
-                    <h2>Ser2Web</h2>
+                    <h2>Term2Web</h2>
                     <span>Serial-to-Web Bridge</span>
                 </div>
             </div>
         </div>
 
-        <button class="nav-btn active" onclick="switchView('config', this)">
-            <span class="nav-icon">⚙️</span> System Config
-        </button>
-        <button class="nav-btn" onclick="switchView('console', this)">
-            <span class="nav-icon">🖥️</span> Live Console
-        </button>
-        <button class="nav-btn" onclick="switchView('archives', this)">
-            <span class="nav-icon">📁</span> Log Archives
-        </button>
+        <div class="nav-section">
+            <button class="nav-btn active" onclick="switchView('config', this)">
+                <span class="nav-icon">⚙️</span> System Config
+            </button>
+            <button class="nav-btn" onclick="switchView('console', this)">
+                <span class="nav-icon">🖥️</span> Live Console
+            </button>
+            <button class="nav-btn" onclick="switchView('archives', this)">
+                <span class="nav-icon">📁</span> Log Archives
+            </button>
+        </div>
 
         <div class="sidebar-footer">
             Open Source Project by<br>
@@ -414,58 +511,80 @@
     </div>
 
     <div class="content">
+
+        <!-- ── System Config View ──────────────────────────── -->
         <div id="view-config" class="view active">
             <div class="grid">
                 <div class="card">
-                    <h3>Serial Port</h3>
+                    <div class="card-header">
+                        <span class="card-title">🔌 Serial Port</span>
+                    </div>
                     <div class="config-row">
                         <select id="portSelect"></select>
-                        <button class="btn-primary" onclick="applyConfig()">Apply & Restart</button>
+                        <button class="btn-primary" onclick="applyConfig()">Apply &amp; Restart</button>
                     </div>
                     <p id="actionMsg"></p>
                 </div>
                 <div class="card">
-                    <h3>Services</h3>
-                    <div class="service-row">
-                        <span class="service-label">Active Port</span>
-                        <span id="currentPort" style="color: var(--text-bright); font-weight: 500;"></span>
+                    <div class="card-header">
+                        <span class="card-title">📡 Services</span>
                     </div>
                     <div class="service-row">
-                        <span class="service-label">TCP Mux (ser2net)</span>
+                        <span class="service-label">
+                            <span class="service-label-icon">🔗</span> Active Port
+                        </span>
+                        <span id="currentPort" class="port-value"></span>
+                    </div>
+                    <div class="service-row">
+                        <span class="service-label">
+                            <span class="service-label-icon">📡</span> TCP Mux (ser2net)
+                        </span>
                         <span id="ser2netStatus"></span>
                     </div>
                     <div class="service-row">
-                        <span class="service-label">Web Terminal (ttyd)</span>
+                        <span class="service-label">
+                            <span class="service-label-icon">🖥️</span> Web Terminal (ttyd)
+                        </span>
                         <span id="ttydStatus"></span>
                     </div>
                 </div>
             </div>
-            <div class="card" style="flex:1; display:flex; flex-direction:column;">
-                <h3>Live Log Preview — Last 50 Lines</h3>
-                <div id="liveLogView" class="log-container ansi2html-content"></div>
+            <div class="card flex-1 min-h-0" style="display:flex; flex-direction:column;">
+                <div class="card-header">
+                    <span class="card-title">📋 Live Serial Monitor — Latest 80 Lines</span>
+                </div>
+                <div id="liveLogView" class="log-container ansi2html-content flex-1"></div>
             </div>
         </div>
 
+        <!-- ── Live Console View ───────────────────────────── -->
         <div id="view-console" class="view" style="padding:0;">
             <iframe id="ttyFrame" data-loaded="false"></iframe>
         </div>
 
+        <!-- ── Log Archives View ───────────────────────────── -->
         <div id="view-archives" class="view">
-            <div class="grid" style="grid-template-columns: 260px 1fr; height: 100%;">
-                <div class="card" style="overflow-y: auto;">
-                    <h3>Log Files</h3>
-                    <div id="archiveList" class="archive-list"></div>
+            <div class="grid flex-1 min-h-0" style="grid-template-columns: 280px 1fr;">
+                <div class="card" style="overflow-y: auto; display:flex; flex-direction:column;">
+                    <div class="card-header">
+                        <span class="card-title">📅 Daily Logs</span>
+                    </div>
+                    <div id="archiveList" class="archive-list flex-1"></div>
                 </div>
                 <div class="card" style="display:flex; flex-direction:column;">
-                    <h3>Log Viewer</h3>
-                    <div id="archiveLogView" class="log-container ansi2html-content" style="height: auto; flex:1;">
-                        Select a file to load.</div>
+                    <div class="card-header">
+                        <span class="card-title" id="archiveViewerTitle">Log Viewer</span>
+                    </div>
+                    <div id="archiveLogView" class="log-container ansi2html-content flex-1" style="height: auto;">
+                        <span style="color:#475569">Select a daily log to view.</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        /* ── Navigation ──────────────────────────────────────── */
         function switchView(viewName, btn) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -482,77 +601,130 @@
             if (viewName === 'archives') loadArchivesList();
         }
 
+        /* ── Status Formatting ───────────────────────────────── */
         function formatStatus(isActive) {
-            const dot = `<span class="status-dot ${isActive ? 'on' : 'off'}"></span>`;
+            const cls = isActive ? 'badge-success' : 'badge-danger';
             const label = isActive ? 'Running' : 'Stopped';
-            const cls = isActive ? 'status-on' : 'status-off';
-            return `${dot}<span class="${cls}">${label}</span>`;
+            return `<span class="badge ${cls}"><span class="badge-dot"></span>${label}</span>`;
         }
 
+        /* ── Fetch System Status ─────────────────────────────── */
         async function fetchStatus() {
-            const res = await fetch('/api/status');
-            const data = await res.json();
-            document.getElementById('currentPort').innerText = data.current_port;
-            document.getElementById('ser2netStatus').innerHTML = formatStatus(data.ser2net_active);
-            document.getElementById('ttydStatus').innerHTML = formatStatus(data.ttyd_active);
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                document.getElementById('currentPort').innerText = data.current_port;
+                document.getElementById('ser2netStatus').innerHTML = formatStatus(data.ser2net_active);
+                document.getElementById('ttydStatus').innerHTML = formatStatus(data.ttyd_active);
 
-            const select = document.getElementById('portSelect');
-            select.innerHTML = '';
-            data.available_ports.forEach(port => {
-                const opt = new Option(port, port);
-                if (port === data.current_port) opt.selected = true;
-                select.add(opt);
-            });
+                const select = document.getElementById('portSelect');
+                select.innerHTML = '';
+                if (data.available_ports.length === 0) {
+                    select.add(new Option('No ports detected', ''));
+                }
+                data.available_ports.forEach(port => {
+                    const opt = new Option(port, port);
+                    if (port === data.current_port) opt.selected = true;
+                    select.add(opt);
+                });
+            } catch (e) {
+                console.error('Failed to fetch status:', e);
+            }
         }
 
+        /* ── Apply Configuration ─────────────────────────────── */
         async function applyConfig() {
+            const port = document.getElementById('portSelect').value;
+            if (!port) return;
             const msg = document.getElementById('actionMsg');
-            msg.innerText = "Applying configuration...";
-            const res = await fetch('/api/apply', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ port: document.getElementById('portSelect').value })
-            });
-            msg.innerText = res.ok ? "✓ Configuration applied successfully." : "✗ Error applying configuration.";
-            if (res.ok) setTimeout(fetchStatus, 1000);
+            msg.innerText = "⏳ Applying configuration…";
+            msg.style.color = 'var(--warning)';
+            try {
+                const res = await fetch('/api/apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ port })
+                });
+                if (res.ok) {
+                    msg.innerText = "✓ Configuration applied. Services restarting…";
+                    msg.style.color = 'var(--success)';
+                    setTimeout(fetchStatus, 2000);
+                } else {
+                    const err = await res.json();
+                    msg.innerText = "✗ Error: " + (err.error || 'Unknown error');
+                    msg.style.color = 'var(--danger)';
+                }
+            } catch (e) {
+                msg.innerText = "✗ Connection error";
+                msg.style.color = 'var(--danger)';
+            }
         }
 
+        /* ── Live Log Preview ────────────────────────────────── */
         async function fetchLiveLogs() {
             if (!document.getElementById('view-config').classList.contains('active')) return;
-            const res = await fetch('/api/logs/live');
-            const data = await res.json();
-            document.getElementById('liveLogView').innerHTML = data.html;
-        }
-
-        async function loadArchivesList() {
-            const res = await fetch('/api/logs/archives');
-            const data = await res.json();
-            const list = document.getElementById('archiveList');
-            list.innerHTML = '';
-            if (data.archives.length === 0) {
-                list.innerHTML = '<p style="color: var(--text); padding: 8px;">No log files found.</p>';
-                return;
+            try {
+                const res = await fetch('/api/logs/live');
+                const data = await res.json();
+                document.getElementById('liveLogView').innerHTML = data.html;
+            } catch (e) {
+                console.error('Failed to fetch live logs:', e);
             }
-            data.archives.forEach(item => {
-                const btn = document.createElement('button');
-                const name = item.name === 'esp32_serial.log' ? '📋 Current Log' : item.name.replace('esp32_serial.log_', '📄 ');
-                const sizeKB = (item.size / 1024).toFixed(1);
-                btn.innerHTML = `${name} <span style="color:#475569;font-size:0.75rem;">(${sizeKB} KB)</span>`;
-                btn.onclick = () => readArchive(item.name);
-                list.appendChild(btn);
-            });
         }
 
-        async function readArchive(filename) {
-            document.getElementById('archiveLogView').innerHTML = "Loading...";
-            const res = await fetch('/api/logs/read/' + filename);
-            const data = await res.json();
-            document.getElementById('archiveLogView').innerHTML = data.html;
+        /* ── Archive Management ──────────────────────────────── */
+        async function loadArchivesList() {
+            try {
+                const res = await fetch('/api/logs/archives');
+                const data = await res.json();
+                const list = document.getElementById('archiveList');
+                list.innerHTML = '';
+
+                if (data.archives.length === 0) {
+                    list.innerHTML = '<p style="color:var(--text);padding:12px;font-size:0.85rem;">No log files yet.</p>';
+                    return;
+                }
+
+                data.archives.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'archive-btn';
+
+                    // Extract date from filename (esp32_serial_YYYY-MM-DD.log)
+                    const dateStr = item.name.replace('esp32_serial_', '').replace('.log', '');
+                    const sizeKB = (item.size / 1024).toFixed(1);
+
+                    btn.innerHTML = `<span>📄 ${dateStr}</span><span class="archive-size">${sizeKB} KB</span>`;
+                    btn.onclick = () => {
+                        document.querySelectorAll('.archive-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        readArchive(item.name, dateStr);
+                    };
+                    list.appendChild(btn);
+                });
+            } catch (e) {
+                console.error('Failed to load archives:', e);
+            }
         }
 
+        async function readArchive(filename, dateStr) {
+            const viewer = document.getElementById('archiveLogView');
+            const title = document.getElementById('archiveViewerTitle');
+            viewer.innerHTML = '<span style="color:var(--accent)">Loading…</span>';
+            title.textContent = `Log Viewer — ${dateStr || filename}`;
+            try {
+                const res = await fetch('/api/logs/read/' + filename);
+                const data = await res.json();
+                viewer.innerHTML = data.html;
+            } catch (e) {
+                viewer.innerHTML = '<span style="color:var(--danger)">Failed to load log file.</span>';
+            }
+        }
+
+        /* ── Initialization ──────────────────────────────────── */
         fetchStatus();
         fetchLiveLogs();
         setInterval(fetchLiveLogs, 3000);
+        setInterval(fetchStatus, 15000);
     </script>
 </body>
 
