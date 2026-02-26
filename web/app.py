@@ -13,7 +13,7 @@ app = Flask(__name__)
 # ---------------------------------------------------------------------------
 CONFIG_FILE = '/data/ser2net.yaml'
 LOG_DIR = '/data'
-TRACE_FILE = os.path.join(LOG_DIR, 'raw_serial.trace')
+TRACE_FILE = os.path.join(LOG_DIR, 'esp32_serial.trace')
 TRACE_MAX_SIZE = 50 * 1024 * 1024  # Truncate raw trace at 50 MB
 
 docker_client = docker.from_env()
@@ -239,7 +239,7 @@ def api_logs_read(filename):
     fp = os.path.join(LOG_DIR, filename)
     if not os.path.exists(fp):
         return jsonify({'html': 'File not found'}), 404
-    text = read_log(fp, reverse=True)
+    text = read_log(fp, last_n=2000, reverse=True)
     return jsonify({'html': conv.convert(text, full=False)})
 
 

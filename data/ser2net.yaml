@@ -3,6 +3,5 @@ connection: &con1
   enable: on
   options:
     kickolduser: true
-    trace-read: ./data/esp32_serial.log
-    trace-write: ./data/esp32_serial.log
-  connector: serialdev,/dev/cu.usbserial-1201,115200N81,local # device:/dev/cu.usbserial-1201
+    trace-read: /data/esp32_serial.trace
+  connector: serialdev,/dev/esp_prog_jtag,115200N81,local # device:/dev/ttyUSB2
