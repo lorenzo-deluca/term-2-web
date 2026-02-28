@@ -585,6 +585,13 @@
 
     <script>
         /* ── Navigation ──────────────────────────────────────── */
+        function getApiUrl(path) {
+            let base = window.location.pathname;
+            if (!base.endsWith('/')) base += '/';
+            if (path.startsWith('/')) path = path.substring(1);
+            return base + path;
+        }
+
         function switchView(viewName, btn) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -611,7 +618,7 @@
         /* ── Fetch System Status ─────────────────────────────── */
         async function fetchStatus() {
             try {
-                const res = await fetch('/api/status');
+                const res = await fetch(getApiUrl('api/status'));
                 const data = await res.json();
                 document.getElementById('currentPort').innerText = data.current_port;
                 document.getElementById('ser2netStatus').innerHTML = formatStatus(data.ser2net_active);
@@ -640,7 +647,7 @@
             msg.innerText = "⏳ Applying configuration…";
             msg.style.color = 'var(--warning)';
             try {
-                const res = await fetch('/api/apply', {
+                const res = await fetch(getApiUrl('api/apply'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ port })
@@ -664,7 +671,7 @@
         async function fetchLiveLogs() {
             if (!document.getElementById('view-config').classList.contains('active')) return;
             try {
-                const res = await fetch('/api/logs/live');
+                const res = await fetch(getApiUrl('api/logs/live'));
                 const data = await res.json();
                 document.getElementById('liveLogView').innerHTML = data.html;
             } catch (e) {
@@ -675,7 +682,7 @@
         /* ── Archive Management ──────────────────────────────── */
         async function loadArchivesList() {
             try {
-                const res = await fetch('/api/logs/archives');
+                const res = await fetch(getApiUrl('api/logs/archives'));
                 const data = await res.json();
                 const list = document.getElementById('archiveList');
                 list.innerHTML = '';
@@ -712,7 +719,7 @@
             viewer.innerHTML = '<span style="color:var(--accent)">Loading…</span>';
             title.textContent = `Log Viewer — ${dateStr || filename}`;
             try {
-                const res = await fetch('/api/logs/read/' + filename);
+                const res = await fetch(getApiUrl('api/logs/read/' + filename));
                 const data = await res.json();
                 viewer.innerHTML = data.html;
             } catch (e) {
