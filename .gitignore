@@ -214,4 +214,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-stm32_registers_dump.json
+data/esp32_serial.trace
