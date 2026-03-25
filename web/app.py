@@ -215,7 +215,7 @@ def api_logs_live():
     log_path = _today_log_path()
     if not os.path.exists(log_path):
         return jsonify({'html': '<span style="color:#475569">Waiting for serial data…</span>'})
-    text = read_log(log_path, last_n=80, reverse=True)
+    text = read_log(log_path, last_n=200, reverse=True)
     return jsonify({'html': conv.convert(text, full=False)})
 
 
