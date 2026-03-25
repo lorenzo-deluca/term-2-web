@@ -601,7 +601,7 @@
             if (viewName === 'console') {
                 const frame = document.getElementById('ttyFrame');
                 if (frame.dataset.loaded === 'false') {
-                    frame.src = `http://${window.location.hostname}:7000`;
+                    frame.src = `${window.location.origin}/serial-logs/`;
                     frame.dataset.loaded = 'true';
                 }
             }
