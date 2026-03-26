@@ -1,7 +1,8 @@
 import os
 import glob
 import threading
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from flask import Flask, request, render_template, jsonify
 from ansi2html import Ansi2HTMLConverter
 import docker
@@ -16,6 +17,9 @@ LOG_DIR = '/data'
 TRACE_FILE = os.path.join(LOG_DIR, 'esp32_serial.trace')
 TRACE_MAX_SIZE = 50 * 1024 * 1024  # Truncate raw trace at 50 MB
 
+# Silence alarm: log a WARNING if no data seen for this many seconds
+TRACE_SILENCE_WARN_SEC = 60
+
 docker_client = docker.from_env()
 conv = Ansi2HTMLConverter(dark_bg=True)
 
@@ -26,12 +30,29 @@ if not os.path.exists(CONFIG_FILE):
 
 
 # ---------------------------------------------------------------------------
+# Shared state: track last-data timestamp for health monitoring
+# ---------------------------------------------------------------------------
+_data_state_lock = threading.Lock()
+_data_state = {
+    'last_data_ts': None,   # datetime (UTC) of last byte written to log
+    'total_lines':  0,      # total lines processed since startup
+}
+
+
+def _update_last_data():
+    with _data_state_lock:
+        _data_state['last_data_ts'] = datetime.now(timezone.utc)
+        _data_state['total_lines'] += 1
+
+
+# ---------------------------------------------------------------------------
 # Background trace-file watcher
 # Reads the raw ser2net trace file, timestamps each line, writes daily logs.
 # This approach does NOT connect to the ser2net TCP port, so ttyd is free to
 # use the connection exclusively without conflicts.
 # ---------------------------------------------------------------------------
 _stop = threading.Event()
+_silence_warned = False  # prevents log spam during a stall
 
 
 def _today_log_path():
@@ -39,11 +60,15 @@ def _today_log_path():
 
 
 def _trace_watcher():
+    global _silence_warned
+
     last_inode = None
     last_pos = 0
     buf = ''
     current_day = None
     fh = None
+    last_activity_ts = None  # wall-clock time (monotonic-safe via time.monotonic)
+    last_activity_mono = None
 
     while not _stop.is_set():
         try:
@@ -58,6 +83,9 @@ def _trace_watcher():
                 last_inode = st.st_ino
                 last_pos = 0
                 buf = ''
+                last_activity_mono = None
+                _silence_warned = False
+                app.logger.info("Trace file recreated/reset — resetting watcher state")
 
             # Prevent unbounded trace growth
             if st.st_size > TRACE_MAX_SIZE:
@@ -71,6 +99,15 @@ def _trace_watcher():
 
             # Nothing new to read
             if st.st_size <= last_pos:
+                # Check for silence alarm
+                if last_activity_mono is not None:
+                    silence_sec = time.monotonic() - last_activity_mono
+                    if silence_sec >= TRACE_SILENCE_WARN_SEC and not _silence_warned:
+                        app.logger.warning(
+                            "SERIAL SILENCE: No data received for %.0fs — watchdog should trigger restart soon",
+                            silence_sec
+                        )
+                        _silence_warned = True
                 _stop.wait(0.3)
                 continue
 
@@ -79,6 +116,10 @@ def _trace_watcher():
                 tf.seek(last_pos)
                 raw = tf.read()
                 last_pos = tf.tell()
+
+            # Data is flowing — reset silence state
+            last_activity_mono = time.monotonic()
+            _silence_warned = False
 
             text = raw.decode('utf-8', errors='replace')
             buf += text
@@ -107,6 +148,9 @@ def _trace_watcher():
 
                 fh.write(f"[{now:%Y-%m-%d %H:%M:%S}] {line}\n")
                 fh.flush()
+
+                # Update shared health state
+                _update_last_data()
 
             _stop.wait(0.3)
 
@@ -172,6 +216,17 @@ def read_log(path, last_n=None, reverse=False):
         return f"Error: {exc}"
 
 
+def _get_watchdog_status():
+    """Fetch watchdog health from the watchdog container HTTP endpoint."""
+    try:
+        import urllib.request
+        import json
+        with urllib.request.urlopen('http://ser2web_watchdog:8888/health', timeout=2) as r:
+            return json.loads(r.read())
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -180,13 +235,49 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/health')
+def api_health():
+    """Health endpoint used by Docker healthcheck and external monitors."""
+    with _data_state_lock:
+        last_ts = _data_state['last_data_ts']
+        total   = _data_state['total_lines']
+
+    silence_sec = None
+    if last_ts is not None:
+        silence_sec = round((datetime.now(timezone.utc) - last_ts).total_seconds(), 1)
+
+    status = 'ok'
+    if silence_sec is not None and silence_sec > TRACE_SILENCE_WARN_SEC:
+        status = 'stale'
+
+    return jsonify({
+        'status':              status,
+        'last_data_utc':       last_ts.isoformat() if last_ts else None,
+        'silence_seconds':     silence_sec,
+        'silence_threshold':   TRACE_SILENCE_WARN_SEC,
+        'total_lines_logged':  total,
+    })
+
+
 @app.route('/api/status')
 def api_status():
+    with _data_state_lock:
+        last_ts = _data_state['last_data_ts']
+
+    silence_sec = None
+    if last_ts is not None:
+        silence_sec = round((datetime.now(timezone.utc) - last_ts).total_seconds(), 1)
+
+    watchdog = _get_watchdog_status()
+
     return jsonify({
-        'current_port': get_current_port(),
-        'available_ports': get_available_ports(),
-        'ser2net_active': get_service_status('ser2web_ser2net'),
-        'ttyd_active': get_service_status('ser2web_ttyd'),
+        'current_port':      get_current_port(),
+        'available_ports':   get_available_ports(),
+        'ser2net_active':    get_service_status('ser2web_ser2net'),
+        'ttyd_active':       get_service_status('ser2web_ttyd'),
+        'last_data_utc':     last_ts.isoformat() if last_ts else None,
+        'silence_seconds':   silence_sec,
+        'watchdog':          watchdog,
     })
 
 
