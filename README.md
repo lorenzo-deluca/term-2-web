@@ -1,5 +1,5 @@
 <h1 align="center">
-  ⚡ Term2Web
+  ⚡ term-2-web
 </h1>
 
 <p align="center">
@@ -7,10 +7,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lorenzo-deluca/Term2Web/stargazers"><img src="https://img.shields.io/github/stars/lorenzo-deluca/Term2Web?style=flat-square&color=yellow" alt="Stars"></a>
-  <a href="https://github.com/lorenzo-deluca/Term2Web/network/members"><img src="https://img.shields.io/github/forks/lorenzo-deluca/Term2Web?style=flat-square&color=orange" alt="Forks"></a>
-  <a href="https://github.com/lorenzo-deluca/Term2Web/issues"><img src="https://img.shields.io/github/issues/lorenzo-deluca/Term2Web?style=flat-square&color=red" alt="Issues"></a>
-  <a href="https://github.com/lorenzo-deluca/Term2Web/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
+  <a href="https://github.com/lorenzo-deluca/term-2-web/stargazers"><img src="https://img.shields.io/github/stars/lorenzo-deluca/term-2-web?style=flat-square&color=yellow" alt="Stars"></a>
+  <a href="https://github.com/lorenzo-deluca/term-2-web/network/members"><img src="https://img.shields.io/github/forks/lorenzo-deluca/term-2-web?style=flat-square&color=orange" alt="Forks"></a>
+  <a href="https://github.com/lorenzo-deluca/term-2-web/issues"><img src="https://img.shields.io/github/issues/lorenzo-deluca/term-2-web?style=flat-square&color=red" alt="Issues"></a>
+  <a href="https://github.com/lorenzo-deluca/term-2-web/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
   <br>
   <img src="https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
@@ -18,15 +18,9 @@
 
 ---
 
-**Term2Web** is an open-source tool that exposes a local serial port (USB/UART) over the network, providing both a **raw TCP socket** and an **interactive web terminal** directly in your browser. It includes a modern **web dashboard** to configure the serial port, monitor running services, and browse historical logs — all fully containerized with Docker Compose.
+**term-2-web** is an open-source tool that exposes a local serial port (USB/UART) over the network, providing both a **raw TCP socket** and an **interactive web terminal** directly in your browser. It includes a modern **web dashboard** to configure the serial port, monitor running services, and browse historical logs — all fully containerized with Docker Compose.
 
 Designed specifically for **headless, mission-critical, remote deployments** (e.g., a Raspberry Pi in the field or a Hardware-in-the-Loop simulator), it features a built-in **serial watchdog** that automatically detects data flow stalls and recovers the serial pipeline without human intervention.
-
-<p align="center">
-  <img src="docs/screenshot.png" alt="Term2Web Dashboard Screenshot" width="800">
-  <br>
-  <em>* Replace this placeholder with a real screenshot of the dashboard *</em>
-</p>
 
 ---
 
@@ -58,7 +52,7 @@ Designed specifically for **headless, mission-critical, remote deployments** (e.
 
 ## 💡 Use Cases
 
-Why use Term2Web instead of traditional tools like `screen` or `picocom`?
+Why use term-2-web instead of traditional tools like `screen` or `picocom`?
 
 1. **Hardware-in-the-Loop (HIL) Testing**: Connect your remote test rigs to your CI/CD pipeline via the raw TCP socket while keeping UI access for manual debugging.
 2. **Remote IoT Gateways**: Deploy on a Raspberry Pi connected to field sensors. No need to SSH into the device to check serial logs; just open the web dashboard.
@@ -77,8 +71,8 @@ Why use Term2Web instead of traditional tools like `screen` or `picocom`?
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/lorenzo-deluca/Term2Web.git
-cd Term2Web
+git clone https://github.com/lorenzo-deluca/term-2-web.git
+cd term-2-web
 
 # 2. Start the application
 docker compose up -d
@@ -169,21 +163,21 @@ Create a rule `/etc/udev/rules.d/99-serial-devices.rules`:
 ```text
 SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", SYMLINK+="esp_serial", MODE="0666"
 ```
-Reload rules (`sudo udevadm control --reload-rules && sudo udevadm trigger`). You can now permanently select `/dev/esp_serial` in the Term2Web Dashboard.
+Reload rules (`sudo udevadm control --reload-rules && sudo udevadm trigger`). You can now permanently select `/dev/esp_serial` in the term-2-web Dashboard.
 
 ### 2. Auto-Start on Boot (systemd)
 Ensure the stack boots with the Pi:
 
 ```bash
-sudo tee /etc/systemd/system/term2web.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/term-2-web.service > /dev/null <<EOF
 [Unit]
-Description=Term2Web Serial Bridge
+Description=term-2-web Serial Bridge
 Requires=docker.service
 After=docker.service network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/path/to/Term2Web
+WorkingDirectory=/path/to/term-2-web
 ExecStart=/usr/bin/docker compose up
 ExecStop=/usr/bin/docker compose down
 Restart=always
@@ -193,7 +187,7 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-sudo systemctl daemon-reload && sudo systemctl enable term2web && sudo systemctl start term2web
+sudo systemctl daemon-reload && sudo systemctl enable term-2-web && sudo systemctl start term-2-web
 ```
 
 ### 3. SD Card Protection
