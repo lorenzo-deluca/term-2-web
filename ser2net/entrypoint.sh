@@ -12,7 +12,7 @@ SERIAL_DEV=""
 YAML_FILE="/data/ser2net.yaml"
 
 if [ -f "$YAML_FILE" ]; then
-    SERIAL_DEV=$(grep -oP '(?<=serialdev,)/dev/[^,]+' "$YAML_FILE" | head -1)
+    SERIAL_DEV=$(grep 'serialdev,' "$YAML_FILE" | sed 's/.*serialdev,\(\/dev\/[^,]*\).*/\1/' | head -1)
 fi
 
 if [ -n "$SERIAL_DEV" ] && [ -e "$SERIAL_DEV" ]; then

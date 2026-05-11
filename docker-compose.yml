@@ -29,7 +29,7 @@ services:
   ttyd:
     build: ./ttyd
     container_name: ser2web_ttyd
-    command: ttyd -W sh -c 'stty raw -echo; exec socat - TCP:ser2web_ser2net:6666'
+    command: ttyd -W sh -c 'stty raw -echo; while true; do socat - TCP:ser2net:6666; echo "[term2web] Connection lost — reconnecting in 2s..."; sleep 2; done'
     ports:
       - "7000:7681"
     depends_on:
@@ -50,7 +50,7 @@ services:
       - "traefik.http.routers.serial-logs.priority=10"
       - "traefik.http.routers.serial-logs.middlewares=serial-logs-strip"
       - "traefik.http.middlewares.serial-logs-strip.stripPrefix.prefixes=/serial-logs"
-      - "traefik.http.services.serial-logs.loadbalancer.server.port=7000"
+      - "traefik.http.services.serial-logs.loadbalancer.server.port=7681"
 
   web-ui:
     build: ./web

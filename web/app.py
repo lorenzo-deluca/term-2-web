@@ -26,7 +26,7 @@ conv = Ansi2HTMLConverter(dark_bg=True)
 # Create default ser2net config if missing
 if not os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, 'w') as f:
-        f.write("connection: &con1\n  accepter: tcp,6666\n  enable: off\n")
+        f.write("%YAML 1.1\n---\nconnection: &con1\n  accepter: tcp,6666\n  enable: off\n")
 
 
 # ---------------------------------------------------------------------------
@@ -285,13 +285,13 @@ def api_status():
 def api_apply():
     port = request.json.get('port')
     with open(CONFIG_FILE, 'w') as f:
+        f.write("%YAML 1.1\n---\n")
         f.write("connection: &con1\n")
         f.write("  accepter: tcp,6666\n")
         f.write("  enable: on\n")
-        f.write("  options:\n")
-        f.write("    kickolduser: true\n")
-        f.write(f"    trace-read: {TRACE_FILE}\n")
-        f.write(f"  connector: serialdev,{port},115200N81,local\n")
+        f.write("  kickolduser: true\n")
+        f.write(f"  trace-read: {TRACE_FILE}\n")
+        f.write(f"  connector: serialdev,{port},115200n81,local\n")
 
     try:
         docker_client.containers.get('ser2web_ser2net').restart(timeout=10)
