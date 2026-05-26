@@ -1,5 +1,7 @@
+%YAML 1.1
+---
 connection: &con1
-  accepter: tcp,6666
+  accepter: tcp,0.0.0.0,6666
   enable: on
   options:
     kickolduser: true
