@@ -21,29 +21,34 @@ TRACE_FILE = os.path.join(LOG_DIR, 'esp32_serial.trace')
 TRACE_MAX_SIZE = 50 * 1024 * 1024  # Truncate raw trace at 50 MB
 
 # Silence alarm: log a WARNING if no data seen for this many seconds
-TRACE_SILENCE_WARN_SEC = 60
+TRACE_SILENCE_WARN_SEC = 150
 
 docker_client = docker.from_env()
 conv = Ansi2HTMLConverter(dark_bg=True)
 
-def _write_classic_config(port=None, enabled=False):
-    """Write a classic ser2net flat config line into CONFIG_FILE.
-
-    Example: 6666:raw:0:/dev/ttyUSB1:115200 8N1
-    """
+def _write_yaml_config(port=None, enabled=False):
+    """Write ser2net YAML-style config (uses trace-read) into CONFIG_FILE."""
     if port is None:
-        # write a disabled default entry that can be enabled later
-        line = "# no-op default; update via web UI\n"
+        # fallback disabled config
+        content = "connection: &con1\n  accepter: tcp,0.0.0.0,6666\n  enable: off\n"
     else:
-        # mode raw, 0 timeout (no timeout), device, baud and flags
-        # Use the verbose tokens ser2net expects: "115200 8DATABITS NONE 1STOPBIT"
-        line = f"6666:raw:0:{port}:115200 8DATABITS NONE 1STOPBIT\n"
+        content = (
+            "connection: &con1\n"
+            "  accepter: tcp,0.0.0.0,6666\n"
+            "  enable: on\n"
+            "  options:\n"
+            f"    kickolduser: true\n"
+            f"    tracefile: {TRACE_FILE}\n"
+            f"  connector: serialdev,{port},115200N81,local\n"
+        )
     with open(CONFIG_FILE, 'w') as f:
-        f.write(line)
+        f.write(content)
 
-# Create default ser2net config if missing
+# Create default ser2net config if missing (classic flat config expected by
+# the ser2net binary when passed via -c). Use tracefile= so ser2net always
+# writes the raw trace to disk even when no TCP client is connected.
 if not os.path.exists(CONFIG_FILE):
-    _write_classic_config(port=None, enabled=False)
+    _write_yaml_config(port=None, enabled=False)
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +89,6 @@ def _trace_watcher():
     buf = ''
     current_day = None
     fh = None
-    last_activity_ts = None  # wall-clock time (monotonic-safe via time.monotonic)
     last_activity_mono = None
 
     while not _stop.is_set():
@@ -112,6 +116,7 @@ def _trace_watcher():
                     pass
                 last_pos = 0
                 buf = ''
+                _stop.wait(0.3)
                 continue
 
             # Nothing new to read
@@ -185,7 +190,6 @@ def _trace_watcher():
 
 threading.Thread(target=_trace_watcher, daemon=True, name='trace-watcher').start()
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -207,8 +211,18 @@ def get_current_port():
         return 'No configuration'
     with open(CONFIG_FILE) as f:
         for line in f:
+            # YAML-style connector: 'connector: serialdev,/dev/ttyUSB1,...'
             if 'serialdev,' in line:
-                return line.split('serialdev,')[1].split(',')[0].strip()
+                try:
+                    return line.split('serialdev,')[1].split(',')[0].strip()
+                except Exception:
+                    continue
+            # Classic single-line config: '6666:raw:0:/dev/ttyUSB1:...'
+            if ':' in line and '/dev/' in line:
+                parts = line.strip().split(':')
+                for p in parts:
+                    if p.startswith('/dev/'):
+                        return p
     return 'Not configured'
 
 
@@ -301,8 +315,10 @@ def api_status():
 @app.route('/api/apply', methods=['POST'])
 def api_apply():
     port = request.json.get('port')
-    # Write classic ser2net single-line config that the installed binary can parse
-    _write_classic_config(port=port, enabled=True)
+    # Write classic single-line config with tracefile= so the installed
+    # ser2net (invoked with -c) will always append the serial bytes to
+    # TRACE_FILE even if no TCP client is attached.
+    _write_yaml_config(port=port, enabled=True)
 
     try:
         docker_client.containers.get('ser2web_ser2net').restart(timeout=10)

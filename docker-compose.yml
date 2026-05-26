@@ -99,8 +99,8 @@ services:
       - SER2NET_CONTAINER=ser2web_ser2net
       # Number of seconds with no serial data before triggering a ser2net restart.
       # Increase this if your device legitimately has long silent periods.
-      - SILENCE_THRESHOLD_SEC=60
-      - CHECK_INTERVAL_SEC=10
+      - SILENCE_THRESHOLD_SEC=900
+      - CHECK_INTERVAL_SEC=30
       - WATCHDOG_HTTP_PORT=8888
     depends_on:
       - ser2net

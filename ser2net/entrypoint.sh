@@ -15,6 +15,13 @@ if [ -f "$YAML_FILE" ]; then
     SERIAL_DEV=$(grep 'serialdev,' "$YAML_FILE" | sed 's/.*serialdev,\(\/dev\/[^,]*\).*/\1/' | head -1)
 fi
 
+# Clear the trace file at startup
+TRACE_FILE="/data/esp32_serial.trace"
+if [ -f "$TRACE_FILE" ]; then
+    echo "[entrypoint] Clearing trace file: $TRACE_FILE"
+    > "$TRACE_FILE"
+fi
+
 if [ -n "$SERIAL_DEV" ] && [ -e "$SERIAL_DEV" ]; then
     echo "[entrypoint] Setting low_latency on $SERIAL_DEV"
     setserial "$SERIAL_DEV" low_latency 2>/dev/null || \
@@ -44,5 +51,28 @@ else
     echo "[entrypoint] /data/ser2net.yaml not found"
 fi
 
+# Background task to keep a dummy connection open, to workaround the 
+# issue where trace-both/trace-read won't capture data unless connected.
+(
+    echo "[entrypoint] Waiting for ser2net to start before launching dummy client..."
+    sleep 3
+    while true; do
+        echo "[entrypoint] Starting dummy connection to 127.0.0.1:6666"
+        nc 127.0.0.1 6666 > /dev/null
+        sleep 5
+    done
+) &
+
 echo "[entrypoint] Starting ser2net in debug mode..."
-exec /usr/sbin/ser2net -n -d -c /data/ser2net.yaml
+# Use -Y to supply YAML configuration (ser2net requires -Y for YAML input).
+# This ensures options like `trace-read` are understood and ser2net will
+# perform reading from the serial device continuously even without active
+# TCP clients.
+if [ -f /data/ser2net.yaml ]; then
+    # Read the YAML file content and pass as a -Y argument. Surrounding
+    # with single quotes avoids word-splitting; we use cat to preserve
+    # newlines which ser2net expects.
+    exec /usr/sbin/ser2net -n -d -Y "$(cat /data/ser2net.yaml)"
+else
+    exec /usr/sbin/ser2net -n -d
+fi

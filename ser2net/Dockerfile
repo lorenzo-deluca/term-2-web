@@ -1,6 +1,10 @@
-FROM alpine:3.21
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache ser2net setserial grep netcat-openbsd
+# Install ser2net and utilities. Debian packages of ser2net are typically
+# built with YAML support which allows using the `trace-read` option.
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends ser2net setserial grep netcat-openbsd \
+	&& rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

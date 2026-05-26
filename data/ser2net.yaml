@@ -1,1 +1,8 @@
-6666:raw:0:/dev/ttyUSB1:115200 8DATABITS NONE 1STOPBIT
+connection: &con1
+  accepter: tcp,0.0.0.0,6666
+  enable: on
+  timeout: 0
+  options:
+    trace-both: /data/esp32_serial.trace
+    max-connections: 3
+  connector: keepopen,serialdev,/dev/ttyUSB1,115200N81,local

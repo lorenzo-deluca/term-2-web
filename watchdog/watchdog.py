@@ -23,7 +23,7 @@ import docker
 TRACE_FILE            = os.environ.get('TRACE_FILE',            '/data/esp32_serial.trace')
 WATCHDOG_LOG_FILE     = os.environ.get('WATCHDOG_LOG_FILE',     '/data/watchdog.log')
 SER2NET_CONTAINER     = os.environ.get('SER2NET_CONTAINER',     'ser2web_ser2net')
-SILENCE_THRESHOLD_SEC = int(os.environ.get('SILENCE_THRESHOLD_SEC', '60'))
+SILENCE_THRESHOLD_SEC = int(os.environ.get('SILENCE_THRESHOLD_SEC', '300'))
 CHECK_INTERVAL_SEC    = int(os.environ.get('CHECK_INTERVAL_SEC',     '10'))
 HTTP_PORT             = int(os.environ.get('WATCHDOG_HTTP_PORT',     '8888'))
 
