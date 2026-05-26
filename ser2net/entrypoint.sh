@@ -23,5 +23,26 @@ else
     echo "[entrypoint] Serial device not found or not configured yet — skipping low_latency setup"
 fi
 
+# Diagnostic info to help debugging why ser2net may exit immediately.
+echo "[entrypoint] Diagnostic: ser2net binary:" 
+if [ -x /usr/sbin/ser2net ]; then
+    ls -l /usr/sbin/ser2net || true
+else
+    echo "[entrypoint] WARNING: /usr/sbin/ser2net not found or not executable"
+fi
+
+echo "[entrypoint] Diagnostic: /dev listing (ttyUSB*):"
+ls -l /dev/ttyUSB* 2>/dev/null || echo "[entrypoint] No ttyUSB devices found"
+
+echo "[entrypoint] Diagnostic: /data listing and permissions:"
+ls -la /data 2>/dev/null || echo "[entrypoint] /data not available"
+
+echo "[entrypoint] Diagnostic: content of /data/ser2net.yaml (if present):"
+if [ -f /data/ser2net.yaml ]; then
+    sed -n '1,200p' /data/ser2net.yaml || true
+else
+    echo "[entrypoint] /data/ser2net.yaml not found"
+fi
+
 echo "[entrypoint] Starting ser2net in debug mode..."
 exec /usr/sbin/ser2net -n -d -c /data/ser2net.yaml
