@@ -28,18 +28,31 @@ conv = Ansi2HTMLConverter(dark_bg=True)
 
 def _write_yaml_config(port=None, enabled=False):
     """Write ser2net YAML-style config (uses trace-read) into CONFIG_FILE."""
+    # Produce YAML matching the layout used in data/ser2net.yaml. When
+    # port is None produce a minimal disabled config (enable: off). When a
+    # port is supplied enable the connection and use the same keys as the
+    # active example (timeout, options.trace-both, max-connections and
+    # connector using keepopen,...)
     if port is None:
-        # fallback disabled config
-        content = "connection: &con1\n  accepter: tcp,0.0.0.0,6666\n  enable: off\n"
+        content = (
+            "connection: &con1\n"
+            "  accepter: tcp,0.0.0.0,6666\n"
+            "  enable: off\n"
+            "  timeout: 0\n"
+            "  options:\n"
+            f"    trace-both: {TRACE_FILE}\n"
+            "    max-connections: 3\n"
+        )
     else:
         content = (
             "connection: &con1\n"
             "  accepter: tcp,0.0.0.0,6666\n"
             "  enable: on\n"
+            "  timeout: 0\n"
             "  options:\n"
-            f"    kickolduser: true\n"
-            f"    tracefile: {TRACE_FILE}\n"
-            f"  connector: serialdev,{port},115200N81,local\n"
+            f"    trace-both: {TRACE_FILE}\n"
+            "    max-connections: 3\n"
+            f"  connector: keepopen,serialdev,{port},115200N81,local\n"
         )
     with open(CONFIG_FILE, 'w') as f:
         f.write(content)
