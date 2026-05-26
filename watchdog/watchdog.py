@@ -31,7 +31,7 @@ HTTP_PORT             = int(os.environ.get('WATCHDOG_HTTP_PORT',     '8888'))
 # Logging setup
 # ---------------------------------------------------------------------------
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s [WATCHDOG] %(levelname)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[logging.StreamHandler(sys.stdout)],

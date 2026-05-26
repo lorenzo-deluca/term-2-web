@@ -83,7 +83,7 @@ services:
       - "traefik.http.routers.web-ui.priority=10"
       - "traefik.http.routers.web-ui.middlewares=web-ui-strip"
       - "traefik.http.middlewares.web-ui-strip.stripPrefix.prefixes=/web-ui"
-      - "traefik.http.services.web-ui.loadbalancer.server.port=5001"
+      - "traefik.http.services.web-ui.loadbalancer.server.port=5000"
 
   watchdog:
     build: ./watchdog

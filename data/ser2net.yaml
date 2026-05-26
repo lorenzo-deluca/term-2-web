@@ -1,8 +1,7 @@
-%YAML 1.1
----
 connection: &con1
   accepter: tcp,6666
   enable: on
-  kickolduser: true
-  trace-read: /data/esp32_serial.trace
-  connector: serialdev,/dev/ttyUSB1,115200n81,local
+  options:
+    kickolduser: true
+    trace-read: /data/esp32_serial.trace
+  connector: serialdev,/dev/ttyUSB1,115200N81,local

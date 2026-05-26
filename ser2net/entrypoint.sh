@@ -23,5 +23,5 @@ else
     echo "[entrypoint] Serial device not found or not configured yet — skipping low_latency setup"
 fi
 
-echo "[entrypoint] Starting ser2net..."
-exec /usr/sbin/ser2net -n -c /data/ser2net.yaml
+echo "[entrypoint] Starting ser2net in debug mode..."
+exec /usr/sbin/ser2net -n -d -c /data/ser2net.yaml
