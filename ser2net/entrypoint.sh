@@ -22,13 +22,6 @@ if [ -f "$TRACE_FILE" ]; then
     > "$TRACE_FILE"
 fi
 
-if [ -n "$SERIAL_DEV" ] && [ -e "$SERIAL_DEV" ]; then
-    echo "[entrypoint] Setting low_latency on $SERIAL_DEV"
-    setserial "$SERIAL_DEV" low_latency 2>/dev/null || \
-        echo "[entrypoint] WARNING: setserial low_latency failed (non-fatal)"
-else
-    echo "[entrypoint] Serial device not found or not configured yet — skipping low_latency setup"
-fi
 
 # Diagnostic info to help debugging why ser2net may exit immediately.
 echo "[entrypoint] Diagnostic: ser2net binary:" 
