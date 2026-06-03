@@ -7,13 +7,16 @@ services:
       - /dev:/dev
       - ./data:/data
     ports:
-      - "6666:6666"
+      # Internal ser2net still listens on 6666. Publish it on a less collision-prone
+      # host port by default; set SER2NET_HOST_PORT=6666 if you explicitly need it.
+      - "${SER2NET_HOST_BIND:-127.0.0.1}:${SER2NET_HOST_PORT:-16666}:6666"
     # restart:always ensures recovery even after a manual `docker stop` or host reboot.
     # Use `docker compose down` to intentionally stop all services.
     restart: always
     healthcheck:
-      # Probe TCP port 6666 — if ser2net is not accepting connections it's considered unhealthy.
-      test: ["CMD-SHELL", "nc -z localhost 6666 || exit 1"]
+      # Do not probe the data port with nc: every probe opens a real ser2net
+      # session and can trip serial lock handling. Check PID 1 and listener only.
+      test: ["CMD-SHELL", "test \"$(cat /proc/1/comm)\" = ser2net && ss -ltn | grep -q ':6666'"]
       interval: 30s
       timeout: 5s
       retries: 3

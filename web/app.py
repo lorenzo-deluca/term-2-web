@@ -27,7 +27,7 @@ docker_client = docker.from_env()
 conv = Ansi2HTMLConverter(dark_bg=True)
 
 def _write_yaml_config(port=None, enabled=False):
-    """Write ser2net YAML-style config (uses trace-read) into CONFIG_FILE."""
+    """Write ser2net YAML config into CONFIG_FILE."""
     # Produce YAML matching the layout used in data/ser2net.yaml. When
     # port is None produce a minimal disabled config (enable: off). When a
     # port is supplied enable the connection and use the same keys as the
@@ -35,8 +35,11 @@ def _write_yaml_config(port=None, enabled=False):
     # connector using keepopen,...)
     if port is None:
         content = (
+            "%YAML 1.1\n"
+            "---\n"
+            "define: &confver 1.0\n"
             "connection: &con1\n"
-            "  accepter: tcp,0.0.0.0,6666\n"
+            "  accepter: tcp,6666\n"
             "  enable: off\n"
             "  timeout: 0\n"
             "  options:\n"
@@ -45,21 +48,23 @@ def _write_yaml_config(port=None, enabled=False):
         )
     else:
         content = (
+            "%YAML 1.1\n"
+            "---\n"
+            "define: &confver 1.0\n"
             "connection: &con1\n"
-            "  accepter: tcp,0.0.0.0,6666\n"
+            "  accepter: tcp,6666\n"
             "  enable: on\n"
             "  timeout: 0\n"
             "  options:\n"
             f"    trace-both: {TRACE_FILE}\n"
             "    max-connections: 3\n"
-            f"  connector: keepopen,serialdev,{port},115200N81,local\n"
+            f"  connector: keepopen,serialdev,{port},115200n81,local\n"
         )
     with open(CONFIG_FILE, 'w') as f:
         f.write(content)
 
-# Create default ser2net config if missing (classic flat config expected by
-# the ser2net binary when passed via -c). Use tracefile= so ser2net always
-# writes the raw trace to disk even when no TCP client is connected.
+# Create default ser2net YAML config if missing. The ser2net entrypoint
+# normalizes this into a single runtime connection before starting ser2net.
 if not os.path.exists(CONFIG_FILE):
     _write_yaml_config(port=None, enabled=False)
 
@@ -328,9 +333,8 @@ def api_status():
 @app.route('/api/apply', methods=['POST'])
 def api_apply():
     port = request.json.get('port')
-    # Write classic single-line config with tracefile= so the installed
-    # ser2net (invoked with -c) will always append the serial bytes to
-    # TRACE_FILE even if no TCP client is attached.
+    # Write YAML config and restart the serial pipeline so ser2net reopens the
+    # selected device with the new settings.
     _write_yaml_config(port=port, enabled=True)
 
     try:

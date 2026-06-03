@@ -1,8 +1,11 @@
+%YAML 1.1
+---
+define: &confver 1.0
 connection: &con1
-  accepter: tcp,0.0.0.0,6666
+  accepter: tcp,6666
   enable: on
   timeout: 0
   options:
     trace-both: /data/esp32_serial.trace
     max-connections: 3
-  connector: keepopen,serialdev,/dev/ttyUSB1,115200N81,local
+  connector: keepopen,serialdev,/dev/ttyUSB1,115200n81,local
